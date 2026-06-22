@@ -9,6 +9,8 @@ import { studentsRouter } from "./routes/students.routes.js";
 import { plansRouter } from "./routes/plans.routes.js";
 import { invoicesRouter } from "./routes/invoices.routes.js";
 import { dashboardRouter } from "./routes/dashboard.routes.js";
+import { assessmentsRouter } from "./routes/assessments.routes.js";
+import { workoutsRouter } from "./routes/workouts.routes.js";
 
 export const app = express();
 
@@ -26,5 +28,7 @@ app.use("/dashboard", dashboardRouter);
 app.use("/students", studentsRouter);
 app.use("/plans", plansRouter);
 app.use("/invoices", invoicesRouter);
+app.use("/assessments", assessmentsRouter);
+app.use("/workouts", workoutsRouter);
 
 app.use(errorHandler);

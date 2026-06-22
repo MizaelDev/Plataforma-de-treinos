@@ -17,6 +17,19 @@ type Dashboard = {
     status: string;
   } | null;
   financialStatus: string;
+  activeWorkout?: {
+    name: string;
+    goal: string;
+    days: Array<{
+      label: string;
+      exercises: Array<{
+        name: string;
+        sets: number;
+        repetitions: string;
+        load?: string | null;
+      }>;
+    }>;
+  } | null;
 };
 
 export default function App() {
@@ -72,6 +85,26 @@ export default function App() {
           <InfoCard label="Modalidade" value={dashboard.plan?.modality ?? "-"} />
           <InfoCard label="Proximo vencimento" value={dashboard.nextInvoice ? new Date(dashboard.nextInvoice.dueDate).toLocaleDateString("pt-BR") : "-"} />
           <InfoCard label="Situacao financeira" value={dashboard.financialStatus} />
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>Ficha ativa</Text>
+          <Text style={styles.cardValue}>{dashboard.activeWorkout?.name ?? "Sem ficha ativa"}</Text>
+          {dashboard.activeWorkout ? <Text style={styles.subtitle}>{dashboard.activeWorkout.goal}</Text> : null}
+          {dashboard.activeWorkout?.days.map((day) => (
+            <View key={day.label} style={styles.workoutDay}>
+              <Text style={styles.dayTitle}>Treino {day.label}</Text>
+              {day.exercises.length === 0 ? (
+                <Text style={styles.exerciseText}>Nenhum exercicio cadastrado.</Text>
+              ) : (
+                day.exercises.map((exercise) => (
+                  <Text key={`${day.label}-${exercise.name}`} style={styles.exerciseText}>
+                    {exercise.name} - {exercise.sets}x {exercise.repetitions}{exercise.load ? ` | ${exercise.load}` : ""}
+                  </Text>
+                ))
+              )}
+            </View>
+          ))}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -169,5 +202,21 @@ const styles = StyleSheet.create({
     color: "#141414",
     fontSize: 18,
     fontWeight: "700"
+  },
+  workoutDay: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingTop: 10
+  },
+  dayTitle: {
+    color: "#141414",
+    fontSize: 15,
+    fontWeight: "700"
+  },
+  exerciseText: {
+    marginTop: 5,
+    color: "#4b5563",
+    fontSize: 14
   }
 });

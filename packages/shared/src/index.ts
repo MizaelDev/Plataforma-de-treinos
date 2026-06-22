@@ -3,6 +3,7 @@ import { z } from "zod";
 export const roles = ["ADMIN", "PROFESSOR", "ALUNO"] as const;
 export const invoiceStatuses = ["PAGO", "PENDENTE", "ATRASADO", "CANCELADO"] as const;
 export const studentStatuses = ["ATIVO", "INATIVO"] as const;
+export const workoutDayLabels = ["A", "B", "C", "D", "E"] as const;
 
 export type Role = (typeof roles)[number];
 export type InvoiceStatus = (typeof invoiceStatuses)[number];
@@ -62,6 +63,49 @@ export const invoiceSchema = z.object({
   status: z.enum(invoiceStatuses).default("PENDENTE")
 });
 
+export const assessmentSchema = z.object({
+  studentId: z.string().uuid("Selecione um aluno."),
+  professorId: z.string().uuid().optional().or(z.literal("")),
+  assessedAt: z.string().datetime().or(z.string().date()),
+  weightKg: brNumber(z.number({ required_error: "Informe o peso.", invalid_type_error: "Informe o peso." }).positive("Informe um peso valido.")),
+  heightCm: brNumber(z.number({ required_error: "Informe a altura.", invalid_type_error: "Informe a altura." }).positive("Informe uma altura valida.")),
+  bodyFatPercentage: brNumber(z.number().min(0).max(100)).optional().or(z.literal("")),
+  muscleMassKg: brNumber(z.number().positive()).optional().or(z.literal("")),
+  abdominalCircumferenceCm: brNumber(z.number().positive()).optional().or(z.literal("")),
+  armCircumferenceCm: brNumber(z.number().positive()).optional().or(z.literal("")),
+  waistCircumferenceCm: brNumber(z.number().positive()).optional().or(z.literal("")),
+  hipCircumferenceCm: brNumber(z.number().positive()).optional().or(z.literal("")),
+  notes: z.string().optional()
+});
+
+export const workoutExerciseSchema = z.object({
+  name: z.string().trim().min(2, "Informe o exercicio."),
+  sets: brNumber(z.number({ required_error: "Informe as series.", invalid_type_error: "Informe as series." }).int().positive()),
+  repetitions: z.string().trim().min(1, "Informe as repeticoes."),
+  load: z.string().optional(),
+  restSeconds: brNumber(z.number().int().positive()).optional().or(z.literal("")),
+  notes: z.string().optional(),
+  order: brNumber(z.number().int().min(0)).default(0)
+});
+
+export const workoutDaySchema = z.object({
+  label: z.enum(workoutDayLabels),
+  exercises: z.array(workoutExerciseSchema).default([])
+});
+
+export const workoutSchema = z.object({
+  studentId: z.string().uuid("Selecione um aluno."),
+  professorId: z.string().uuid().optional().or(z.literal("")),
+  name: z.string().trim().min(2, "Informe o nome da ficha."),
+  goal: z.string().trim().min(2, "Informe o objetivo do treino."),
+  startDate: z.string().datetime().or(z.string().date()),
+  endDate: z.string().datetime().or(z.string().date()).optional().or(z.literal("")),
+  isActive: z.coerce.boolean().default(true),
+  days: z.array(workoutDaySchema).default([])
+});
+
 export type StudentInput = z.infer<typeof studentSchema>;
 export type PlanInput = z.infer<typeof planSchema>;
 export type InvoiceInput = z.infer<typeof invoiceSchema>;
+export type AssessmentInput = z.infer<typeof assessmentSchema>;
+export type WorkoutInput = z.infer<typeof workoutSchema>;

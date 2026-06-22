@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, CreditCard, Dumbbell, LogOut, Menu, PanelLeftClose, Users, X } from "lucide-react";
+import { Activity, BarChart3, ClipboardList, CreditCard, Dumbbell, LogOut, Menu, PanelLeftClose, Users, X } from "lucide-react";
 import { clearSession, getStoredUser, type SessionUser } from "@/lib/api";
 
 const links = [
   { href: "/", label: "Dashboard", icon: BarChart3 },
   { href: "/students", label: "Alunos", icon: Users },
   { href: "/plans", label: "Planos", icon: Dumbbell },
-  { href: "/invoices", label: "Mensalidades", icon: CreditCard }
+  { href: "/invoices", label: "Mensalidades", icon: CreditCard },
+  { href: "/assessments", label: "Avaliacoes", icon: Activity },
+  { href: "/workouts", label: "Treinos", icon: ClipboardList }
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

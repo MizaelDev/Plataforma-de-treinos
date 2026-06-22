@@ -112,6 +112,10 @@ Senha de todas: `123456`
 - `GET|POST|PATCH|DELETE /invoices`
 - `POST /invoices/:id/pay`
 - `POST /invoices/student-plans`
+- `GET|POST /assessments`
+- `GET|PUT|DELETE /assessments/:id`
+- `GET|POST /workouts`
+- `GET|PUT|DELETE /workouts/:id`
 
 ## Fase 1 implementada
 
@@ -123,6 +127,16 @@ Senha de todas: `123456`
 - Dashboard do aluno no app mobile.
 - Seed com dados de teste.
 
-## Fora da Fase 1
+## Fase 2 implementada
 
-Avaliacoes fisicas, treinos, frequencia, chat, IA de treino, certificados, assinatura digital, WhatsApp real, pagamento online real, videos, ranking avancado, graduacao/faixas e relatorios avancados.
+- Avaliacoes fisicas com aluno, professor responsavel, data, medidas corporais e IMC calculado automaticamente.
+- Historico de avaliacoes por aluno e comparacao simples das duas avaliacoes mais recentes.
+- Fichas de treino com aluno, professor responsavel, objetivo, periodo, status e treinos A-E.
+- Exercicios por treino com series, repeticoes, carga, descanso, observacoes e ordem.
+- Regra de apenas uma ficha ativa por aluno.
+- Menus e telas no painel para `Avaliacoes` e `Treinos`.
+- Dashboard/app do aluno exibindo ficha ativa quando existir.
+
+## Fora desta fase
+
+Biblioteca completa de exercicios com videos, check-in por QR Code, WhatsApp, chat, IA, certificados, graduacao/faixas e relatorios avancados.

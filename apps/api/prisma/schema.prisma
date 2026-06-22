@@ -25,6 +25,14 @@ enum InvoiceStatus {
   CANCELADO
 }
 
+enum WorkoutDayLabel {
+  A
+  B
+  C
+  D
+  E
+}
+
 model Organization {
   id                 String              @id @default(uuid())
   name               String
@@ -36,6 +44,8 @@ model Organization {
   plans              Plan[]
   financialSettings  FinancialSettings?
   invoices           Invoice[]
+  assessments        PhysicalAssessment[]
+  workoutPlans       WorkoutPlan[]
   auditLogs          AuditLog[]
 }
 
@@ -49,6 +59,8 @@ model User {
   role           Role
   isActive       Boolean      @default(true)
   student        Student?
+  assessments    PhysicalAssessment[] @relation("ProfessorAssessments")
+  workoutPlans   WorkoutPlan[] @relation("ProfessorWorkoutPlans")
   auditLogs      AuditLog[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -76,6 +88,8 @@ model Student {
   status         StudentStatus @default(ATIVO)
   studentPlans   StudentPlan[]
   invoices       Invoice[]
+  assessments    PhysicalAssessment[]
+  workoutPlans   WorkoutPlan[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   deletedAt      DateTime?
@@ -151,6 +165,80 @@ model FinancialSettings {
   monthlyInterestPercentage  Decimal      @default(1) @db.Decimal(5, 2)
   createdAt                  DateTime     @default(now())
   updatedAt                  DateTime     @updatedAt
+}
+
+model PhysicalAssessment {
+  id                         String       @id @default(uuid())
+  organizationId             String
+  organization               Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  studentId                  String
+  student                    Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  professorId                String?
+  professor                  User?        @relation("ProfessorAssessments", fields: [professorId], references: [id], onDelete: SetNull)
+  assessedAt                 DateTime
+  weightKg                   Decimal      @db.Decimal(6, 2)
+  heightCm                   Decimal      @db.Decimal(6, 2)
+  bmi                        Decimal      @db.Decimal(5, 2)
+  bodyFatPercentage          Decimal?     @db.Decimal(5, 2)
+  muscleMassKg               Decimal?     @db.Decimal(6, 2)
+  abdominalCircumferenceCm   Decimal?     @db.Decimal(6, 2)
+  armCircumferenceCm         Decimal?     @db.Decimal(6, 2)
+  waistCircumferenceCm       Decimal?     @db.Decimal(6, 2)
+  hipCircumferenceCm         Decimal?     @db.Decimal(6, 2)
+  notes                      String?
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
+  deletedAt                  DateTime?
+
+  @@index([organizationId, studentId, assessedAt])
+  @@index([organizationId, deletedAt])
+}
+
+model WorkoutPlan {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  professorId    String?
+  professor      User?        @relation("ProfessorWorkoutPlans", fields: [professorId], references: [id], onDelete: SetNull)
+  name           String
+  goal           String
+  startDate      DateTime
+  endDate        DateTime?
+  isActive       Boolean      @default(true)
+  days           WorkoutDay[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  @@index([organizationId, studentId, isActive])
+  @@index([organizationId, deletedAt])
+}
+
+model WorkoutDay {
+  id            String          @id @default(uuid())
+  workoutPlanId String
+  workoutPlan   WorkoutPlan     @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+  label         WorkoutDayLabel
+  exercises     Exercise[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([workoutPlanId, label])
+}
+
+model Exercise {
+  id           String     @id @default(uuid())
+  workoutDayId String
+  workoutDay   WorkoutDay @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  name         String
+  sets         Int
+  repetitions  String
+  load         String?
+  restSeconds  Int?
+  notes        String?
+  order        Int
 }
 
 model AuditLog {

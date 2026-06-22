@@ -56,7 +56,7 @@ dashboardRouter.get(
       return;
     }
 
-    const [student, nextInvoice, overdueInvoices] = await Promise.all([
+    const [student, nextInvoice, overdueInvoices, activeWorkout] = await Promise.all([
       prisma.student.findUnique({
         where: { id: studentId },
         include: {
@@ -73,6 +73,16 @@ dashboardRouter.get(
       }),
       prisma.invoice.count({
         where: { studentId, status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: new Date() } }
+      }),
+      prisma.workoutPlan.findFirst({
+        where: { organizationId: request.user!.organizationId, studentId, isActive: true, deletedAt: null },
+        include: {
+          days: {
+            include: { exercises: { orderBy: { order: "asc" } } },
+            orderBy: { label: "asc" }
+          }
+        },
+        orderBy: { createdAt: "desc" }
       })
     ]);
 
@@ -83,7 +93,8 @@ dashboardRouter.get(
       nextInvoiceCharges: nextInvoice
         ? await calculateInvoiceCharges(request.user!.organizationId, nextInvoice.dueDate, nextInvoice.amount)
         : null,
-      financialStatus: overdueInvoices > 0 ? "INADIMPLENTE" : "EM_DIA"
+      financialStatus: overdueInvoices > 0 ? "INADIMPLENTE" : "EM_DIA",
+      activeWorkout
     });
   })
 );
