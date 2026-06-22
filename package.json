@@ -1,0 +1,25 @@
+{
+  "name": "academia-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Monorepo para gestao de academias, personal trainers e artes marciais.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:api",
+    "dev:api": "npm run dev -w @academia/api",
+    "dev:web": "npm run dev -w @academia/web",
+    "dev:mobile": "npm run start -w @academia/mobile",
+    "build": "npm run build -w @academia/shared && npm run build -w @academia/api && npm run build -w @academia/web",
+    "typecheck": "npm run typecheck -w @academia/shared && npm run typecheck -w @academia/api && npm run typecheck -w @academia/web && npm run typecheck -w @academia/mobile",
+    "lint": "npm run lint -w @academia/web",
+    "db:generate": "npm run prisma:generate -w @academia/api",
+    "db:migrate": "npm run prisma:migrate -w @academia/api",
+    "db:seed": "npm run prisma:seed -w @academia/api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

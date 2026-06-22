@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  PROFESSOR
+  ALUNO
+}
+
+enum StudentStatus {
+  ATIVO
+  INATIVO
+}
+
+enum InvoiceStatus {
+  PAGO
+  PENDENTE
+  ATRASADO
+  CANCELADO
+}
+
+model Organization {
+  id                 String              @id @default(uuid())
+  name               String
+  document           String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  users              User[]
+  students           Student[]
+  plans              Plan[]
+  financialSettings  FinancialSettings?
+  invoices           Invoice[]
+  auditLogs          AuditLog[]
+}
+
+model User {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String       @unique
+  passwordHash   String
+  role           Role
+  isActive       Boolean      @default(true)
+  student        Student?
+  auditLogs      AuditLog[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, role])
+}
+
+model Student {
+  id             String        @id @default(uuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String?       @unique
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  fullName       String
+  cpf            String
+  cpfHash        String
+  birthDate      DateTime
+  phone          String
+  address        String
+  email          String
+  photoUrl       String?
+  enrollmentDate DateTime
+  modality       String
+  notes          String?
+  status         StudentStatus @default(ATIVO)
+  studentPlans   StudentPlan[]
+  invoices       Invoice[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  @@unique([organizationId, cpfHash])
+  @@index([organizationId, status])
+  @@index([organizationId, email])
+}
+
+model Plan {
+  id             String        @id @default(uuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  value          Decimal       @db.Decimal(10, 2)
+  modality       String
+  durationDays   Int
+  dueDay         Int
+  isActive       Boolean       @default(true)
+  studentPlans   StudentPlan[]
+  invoices       Invoice[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  @@index([organizationId, isActive])
+}
+
+model StudentPlan {
+  id          String    @id @default(uuid())
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  planId      String
+  plan        Plan      @relation(fields: [planId], references: [id], onDelete: Restrict)
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([studentId, isActive])
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  planId         String?
+  plan           Plan?         @relation(fields: [planId], references: [id], onDelete: SetNull)
+  dueDate        DateTime
+  paidAt         DateTime?
+  amount         Decimal       @db.Decimal(10, 2)
+  fineAmount     Decimal       @default(0) @db.Decimal(10, 2)
+  interestAmount Decimal       @default(0) @db.Decimal(10, 2)
+  totalPaid      Decimal       @default(0) @db.Decimal(10, 2)
+  status         InvoiceStatus @default(PENDENTE)
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([organizationId, status, dueDate])
+  @@index([studentId, dueDate])
+}
+
+model FinancialSettings {
+  id                         String       @id @default(uuid())
+  organizationId             String       @unique
+  organization               Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fixedFinePercentage        Decimal      @default(2) @db.Decimal(5, 2)
+  dailyInterestPercentage    Decimal      @default(0.033) @db.Decimal(7, 4)
+  monthlyInterestPercentage  Decimal      @default(1) @db.Decimal(5, 2)
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actorUserId    String?
+  actor          User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  action         String
+  entity         String
+  entityId       String?
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, entity, createdAt])
+}
