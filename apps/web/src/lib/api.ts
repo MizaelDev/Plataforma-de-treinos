@@ -50,6 +50,14 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ message: "Erro inesperado." }));
+
+    if (response.status === 401) {
+      clearSession();
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+
     const issueMessages = Array.isArray(payload.issues)
       ? payload.issues
           .map((issue: { field?: string; message?: string }) => [issue.field, issue.message].filter(Boolean).join(": "))
