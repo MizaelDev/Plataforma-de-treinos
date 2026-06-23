@@ -14,12 +14,42 @@ function getStudentId(user: Express.Request["user"]) {
 }
 
 const workoutInclude = {
-  student: { select: { id: true, fullName: true } },
   professor: { select: { id: true, name: true } },
   days: {
     include: { exercises: { orderBy: { order: "asc" as const } } },
     orderBy: { label: "asc" as const }
   }
+};
+
+const planSelect = {
+  id: true,
+  name: true,
+  value: true,
+  modality: true
+};
+
+const invoiceSelect = {
+  id: true,
+  dueDate: true,
+  amount: true,
+  status: true,
+  plan: { select: planSelect }
+};
+
+const assessmentSelect = {
+  id: true,
+  assessedAt: true,
+  weightKg: true,
+  heightCm: true,
+  bmi: true,
+  bodyFatPercentage: true,
+  muscleMassKg: true,
+  abdominalCircumferenceCm: true,
+  armCircumferenceCm: true,
+  waistCircumferenceCm: true,
+  hipCircumferenceCm: true,
+  notes: true,
+  professor: { select: { id: true, name: true } }
 };
 
 studentAreaRouter.get(
@@ -44,14 +74,14 @@ studentAreaRouter.get(
           modality: true,
           studentPlans: {
             where: { isActive: true },
-            include: { plan: true },
+            include: { plan: { select: planSelect } },
             take: 1
           }
         }
       }),
       prisma.invoice.findFirst({
         where: { organizationId, studentId, status: { in: ["PENDENTE", "ATRASADO"] } },
-        include: { plan: true },
+        select: invoiceSelect,
         orderBy: { dueDate: "asc" }
       }),
       prisma.invoice.count({
@@ -59,13 +89,13 @@ studentAreaRouter.get(
       }),
       prisma.invoice.findMany({
         where: { organizationId, studentId },
-        include: { plan: true },
+        select: invoiceSelect,
         orderBy: { dueDate: "desc" },
         take: 5
       }),
       prisma.physicalAssessment.findFirst({
         where: { organizationId, studentId, deletedAt: null },
-        include: { professor: { select: { id: true, name: true } } },
+        select: assessmentSelect,
         orderBy: { assessedAt: "desc" }
       }),
       prisma.workoutPlan.findFirst({
@@ -112,7 +142,7 @@ studentAreaRouter.get(
     const organizationId = request.user!.organizationId;
     const invoices = await prisma.invoice.findMany({
       where: { organizationId, studentId },
-      include: { plan: true },
+      select: invoiceSelect,
       orderBy: { dueDate: "desc" }
     });
 
@@ -138,7 +168,7 @@ studentAreaRouter.get(
 
     const assessments = await prisma.physicalAssessment.findMany({
       where: { organizationId: request.user!.organizationId, studentId, deletedAt: null },
-      include: { professor: { select: { id: true, name: true } } },
+      select: assessmentSelect,
       orderBy: { assessedAt: "desc" }
     });
 

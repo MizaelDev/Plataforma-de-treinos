@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dumbbell } from "lucide-react";
 import { Alert, Button, fieldClass } from "@/components/ui";
-import { setSession } from "@/lib/api";
+import { getStoredUser, setSession } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 
@@ -14,6 +14,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("123456");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (!user) return;
+    router.replace(user.role === "ALUNO" ? "/student/dashboard" : "/");
+  }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

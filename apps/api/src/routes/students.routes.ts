@@ -10,6 +10,11 @@ export const studentsRouter = Router();
 
 studentsRouter.use(requireAuth);
 
+function removeInternalStudentFields<T extends { cpfHash?: string }>(student: T) {
+  const { cpfHash: _cpfHash, ...safeStudent } = student;
+  return safeStudent;
+}
+
 studentsRouter.get(
   "/",
   requireRoles("ADMIN", "PROFESSOR"),
@@ -17,7 +22,15 @@ studentsRouter.get(
     const students = await prisma.student.findMany({
       where: { organizationId: request.user!.organizationId, deletedAt: null },
       orderBy: { fullName: "asc" },
-      include: {
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        modality: true,
+        status: true,
+        photoUrl: true,
+        enrollmentDate: true,
         studentPlans: {
           where: { isActive: true },
           include: { plan: true },
@@ -46,7 +59,7 @@ studentsRouter.post(
       entityId: student.id
     });
 
-    response.status(201).json({ student });
+    response.status(201).json({ student: removeInternalStudentFields(student) });
   })
 );
 
@@ -68,7 +81,7 @@ studentsRouter.get(
       return;
     }
 
-    response.json({ student });
+    response.json({ student: removeInternalStudentFields(student) });
   })
 );
 
@@ -89,7 +102,7 @@ studentsRouter.patch(
       entityId: student.id
     });
 
-    response.json({ student });
+    response.json({ student: removeInternalStudentFields(student) });
   })
 );
 

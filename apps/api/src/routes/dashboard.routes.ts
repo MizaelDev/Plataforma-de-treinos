@@ -56,27 +56,47 @@ dashboardRouter.get(
       return;
     }
 
+    const planSelect = {
+      id: true,
+      name: true,
+      value: true,
+      modality: true
+    };
+
     const [student, nextInvoice, overdueInvoices, activeWorkout] = await Promise.all([
-      prisma.student.findUnique({
-        where: { id: studentId },
-        include: {
+      prisma.student.findFirst({
+        where: { id: studentId, organizationId: request.user!.organizationId, deletedAt: null },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          photoUrl: true,
+          modality: true,
           studentPlans: {
             where: { isActive: true },
-            include: { plan: true },
+            include: { plan: { select: planSelect } },
             take: 1
           }
         }
       }),
       prisma.invoice.findFirst({
-        where: { studentId, status: { in: ["PENDENTE", "ATRASADO"] } },
+        where: { organizationId: request.user!.organizationId, studentId, status: { in: ["PENDENTE", "ATRASADO"] } },
+        select: { id: true, dueDate: true, amount: true, status: true, plan: { select: planSelect } },
         orderBy: { dueDate: "asc" }
       }),
       prisma.invoice.count({
-        where: { studentId, status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: new Date() } }
+        where: { organizationId: request.user!.organizationId, studentId, status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: new Date() } }
       }),
       prisma.workoutPlan.findFirst({
         where: { organizationId: request.user!.organizationId, studentId, isActive: true, deletedAt: null },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          goal: true,
+          startDate: true,
+          endDate: true,
+          isActive: true,
           days: {
             include: { exercises: { orderBy: { order: "asc" } } },
             orderBy: { label: "asc" }

@@ -21,14 +21,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const storedUser = getStoredUser();
+    if (!storedUser) {
+      router.replace("/login");
+      return;
+    }
+
     if (storedUser?.role === "ALUNO") {
       router.replace("/student/dashboard");
       return;
     }
+
     setUser(storedUser);
+    setAuthChecked(true);
   }, [router]);
 
   function logout() {
@@ -57,6 +65,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       })}
     </nav>
   );
+
+  if (!authChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f6f7f8] text-sm font-medium text-muted">
+        Carregando painel...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f6f7f8]">

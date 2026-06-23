@@ -18,6 +18,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const storedUser = getStoredUser();
@@ -32,6 +33,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
     }
 
     setUser(storedUser);
+    setAuthChecked(true);
   }, [router]);
 
   function logout() {
@@ -60,6 +62,14 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
       })}
     </nav>
   );
+
+  if (!authChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f7f8f5] text-sm font-medium text-muted">
+        Carregando area do aluno...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f8f5]">
