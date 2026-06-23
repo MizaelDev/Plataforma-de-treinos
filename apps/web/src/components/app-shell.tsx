@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Activity, BarChart3, ClipboardList, CreditCard, Dumbbell, LogOut, Menu, PanelLeftClose, Settings, Users, X } from "lucide-react";
 import { clearSession, getStoredUser, type SessionUser } from "@/lib/api";
+import { appConfig } from "@/lib/app-config";
 
 const links = [
   { href: "/", label: "Dashboard", icon: BarChart3 },
@@ -78,10 +79,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#f6f7f8]">
       <aside className="fixed left-0 top-0 z-30 hidden h-screen w-72 border-r border-gray-200 bg-white px-5 py-5 lg:block">
         <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand text-sm font-bold text-white">AP</div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-900 text-sm font-bold text-white ring-2 ring-teal-100">{appConfig.initials}</div>
           <div>
-            <p className="text-base font-semibold text-ink">Academia Platform</p>
-            <p className="text-xs text-muted">Gestao administrativa</p>
+            <p className="text-base font-semibold text-ink">{appConfig.name}</p>
+            <p className="text-xs text-muted">{appConfig.adminSubtitle}</p>
           </div>
         </div>
         {navigation}
@@ -101,9 +102,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <aside className="relative h-full w-80 max-w-[85vw] border-r border-gray-200 bg-white p-5 shadow-xl">
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand text-sm font-bold text-white">AP</div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-900 text-sm font-bold text-white">{appConfig.initials}</div>
                 <div>
-                  <p className="text-base font-semibold text-ink">Academia Platform</p>
+                  <p className="text-base font-semibold text-ink">{appConfig.name}</p>
                   <p className="text-xs text-muted">Painel</p>
                 </div>
               </div>

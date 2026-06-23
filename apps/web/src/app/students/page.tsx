@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
@@ -28,6 +29,7 @@ type Student = {
 };
 
 const pageSize = 8;
+const modalityOptions = ["LUTA", "MUSCULAÇÃO"];
 
 const initialStudentForm = () => ({
   fullName: "",
@@ -40,7 +42,8 @@ const initialStudentForm = () => ({
   enrollmentDate: new Date().toISOString().slice(0, 10),
   modality: "",
   notes: "",
-  status: "ATIVO"
+  status: "ATIVO",
+  createAccess: false
 });
 
 export default function StudentsPage() {
@@ -90,10 +93,14 @@ export default function StudentsPage() {
     setSuccess("");
     setSaving(true);
     try {
-      await api("/students", { method: "POST", body: JSON.stringify(form) });
+      const payload = await api<{ access?: { email: string; temporaryPassword: string } | null }>("/students", { method: "POST", body: JSON.stringify(form) });
       setForm(initialStudentForm());
       await load();
-      setSuccess("Aluno cadastrado com sucesso.");
+      setSuccess(
+        payload.access
+          ? `Aluno cadastrado com sucesso. Acesso criado: ${payload.access.email} / senha temporaria ${payload.access.temporaryPassword}.`
+          : "Aluno cadastrado com sucesso."
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
@@ -133,7 +140,6 @@ export default function StudentsPage() {
             ["phone", "Telefone"],
             ["address", "Endereco"],
             ["email", "E-mail"],
-            ["modality", "Modalidade"],
             ["photoUrl", "Foto URL"],
             ["birthDate", "Nascimento"],
             ["enrollmentDate", "Matricula"]
@@ -143,7 +149,7 @@ export default function StudentsPage() {
               <input
                 className={fieldClass}
                 type={name.includes("Date") ? "date" : "text"}
-                value={(form as Record<string, string>)[name]}
+                value={String((form as Record<string, unknown>)[name] ?? "")}
                 onChange={(event) => {
                   const value = name === "cpf" ? formatCpf(event.target.value) : name === "phone" ? formatPhone(event.target.value) : event.target.value;
                   setForm((current) => ({ ...current, [name]: value }));
@@ -151,9 +157,30 @@ export default function StudentsPage() {
               />
             </label>
           ))}
+          <label className="text-sm font-medium text-gray-700">
+            Modalidade
+            <select className={fieldClass} value={form.modality} onChange={(event) => setForm((current) => ({ ...current, modality: event.target.value }))}>
+              <option value="">Selecione</option>
+              {modalityOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
           <label className="text-sm font-medium text-gray-700 md:col-span-2 xl:col-span-3">
             Observacoes
             <textarea className={textareaClass} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
+          </label>
+          <label className="flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 md:col-span-2 xl:col-span-3">
+            <input
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-brand"
+              type="checkbox"
+              checked={form.createAccess}
+              onChange={(event) => setForm((current) => ({ ...current, createAccess: event.target.checked }))}
+            />
+            <span>
+              <span className="block font-semibold text-ink">Criar acesso do aluno</span>
+              <span className="block text-muted">Cria um usuario ALUNO usando o e-mail informado e senha temporaria 123456.</span>
+            </span>
           </label>
           <div className="flex gap-2 md:col-span-2 xl:col-span-3">
             <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Cadastrar aluno"}</Button>
@@ -200,15 +227,24 @@ export default function StudentsPage() {
                   <tbody>
                     {visibleStudents.map((student) => (
                       <tr key={student.id} className="border-t border-gray-100 hover:bg-gray-50/70">
-                        <td className="px-4 py-3 font-medium text-ink">{student.fullName}</td>
+                        <td className="px-4 py-3 font-medium text-ink">
+                          <Link href={`/students/${student.id}`} className="hover:text-brand">
+                            {student.fullName}
+                          </Link>
+                        </td>
                         <td className="px-4 py-3 text-gray-600">{student.email}</td>
                         <td className="px-4 py-3 text-gray-600">{student.phone}</td>
                         <td className="px-4 py-3 text-gray-600">{student.modality}</td>
                         <td className="px-4 py-3"><StatusBadge status={student.status} /></td>
                         <td className="px-4 py-3">
-                          <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setStudentToDelete(student)}>
-                            Excluir
-                          </Button>
+                          <div className="flex gap-2">
+                            <Link href={`/students/${student.id}`} className="inline-flex h-8 items-center rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">
+                              Ver perfil
+                            </Link>
+                            <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setStudentToDelete(student)}>
+                              Excluir
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}

@@ -22,5 +22,24 @@ export function normalizeMoneyInput(value: string) {
 }
 
 export function formatCurrency(value: string | number) {
-  return Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return Number(value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+export function formatDate(value?: string | Date | null) {
+  if (!value) return "-";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("pt-BR");
+}
+
+export function formatDateTime(value?: string | Date | null) {
+  if (!value) return "-";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+export function formatDecimal(value?: string | number | null, suffix = "") {
+  if (value === undefined || value === null || value === "") return "-";
+  return `${String(value).replace(".", ",")}${suffix}`;
 }

@@ -19,7 +19,7 @@ dashboardRouter.get(
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const firstDayNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-    const [activeStudents, dueSoon, overdue, monthRevenue, delinquentStudents] = await Promise.all([
+    const [activeStudents, dueSoon, overdue, monthRevenue, delinquentStudents, dueSoonInvoices, delinquentStudentRows, latestPayments, latestStudents] = await Promise.all([
       prisma.student.count({ where: { organizationId, status: "ATIVO", deletedAt: null } }),
       prisma.invoice.count({ where: { organizationId, status: "PENDENTE", dueDate: { gte: now, lte: inSevenDays } } }),
       prisma.invoice.count({ where: { organizationId, status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: now } } }),
@@ -33,15 +33,78 @@ dashboardRouter.get(
           deletedAt: null,
           invoices: { some: { status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: now } } }
         }
+      }),
+      prisma.invoice.findMany({
+        where: { organizationId, status: "PENDENTE", dueDate: { gte: now, lte: inSevenDays } },
+        include: { student: { select: { id: true, fullName: true } }, plan: { select: { id: true, name: true } } },
+        orderBy: { dueDate: "asc" },
+        take: 6
+      }),
+      prisma.student.findMany({
+        where: {
+          organizationId,
+          deletedAt: null,
+          invoices: { some: { status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: now } } }
+        },
+        select: {
+          id: true,
+          fullName: true,
+          phone: true,
+          invoices: {
+            where: { status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: now } },
+            select: { id: true, dueDate: true, amount: true, status: true },
+            orderBy: { dueDate: "asc" },
+            take: 1
+          }
+        },
+        orderBy: { fullName: "asc" },
+        take: 6
+      }),
+      prisma.invoice.findMany({
+        where: { organizationId, status: "PAGO", paidAt: { not: null } },
+        include: { student: { select: { id: true, fullName: true } }, plan: { select: { id: true, name: true } } },
+        orderBy: { paidAt: "desc" },
+        take: 6
+      }),
+      prisma.student.findMany({
+        where: { organizationId, deletedAt: null },
+        select: { id: true, fullName: true, modality: true, enrollmentDate: true, status: true },
+        orderBy: { createdAt: "desc" },
+        take: 6
       })
     ]);
+
+    const dueSoonInvoicesWithCharges = await Promise.all(
+      dueSoonInvoices.map(async (invoice) => ({
+        ...invoice,
+        charges: await calculateInvoiceCharges(organizationId, invoice.dueDate, invoice.amount)
+      }))
+    );
+
+    const delinquentStudentRowsWithCharges = await Promise.all(
+      delinquentStudentRows.map(async (student) => ({
+        id: student.id,
+        fullName: student.fullName,
+        phone: student.phone,
+        oldestInvoice: student.invoices[0]
+          ? {
+              ...student.invoices[0],
+              charges: await calculateInvoiceCharges(organizationId, student.invoices[0].dueDate, student.invoices[0].amount)
+            }
+          : null
+      }))
+    );
 
     response.json({
       activeStudents,
       dueSoon,
       overdue,
       monthRevenue: monthRevenue._sum.totalPaid ?? 0,
-      delinquentStudents
+      delinquentStudents,
+      dueSoonInvoices: dueSoonInvoicesWithCharges,
+      delinquentStudentRows: delinquentStudentRowsWithCharges,
+      latestPayments,
+      latestStudents
     });
   })
 );

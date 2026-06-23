@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Dumbbell } from "lucide-react";
 import { Alert, Button, fieldClass } from "@/components/ui";
 import { getStoredUser, setSession } from "@/lib/api";
+import { appConfig } from "@/lib/app-config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 
@@ -52,12 +53,12 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-[#f6f7f8] px-4">
       <form onSubmit={handleSubmit} className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-brand text-white">
-            <Dumbbell className="h-5 w-5" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-gray-900 text-white">
+            <Dumbbell className="h-5 w-5 text-teal-200" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-ink">Entrar no painel</h1>
-            <p className="text-sm text-muted">Use um usuario administrativo para gerenciar a academia.</p>
+            <h1 className="text-xl font-semibold text-ink">{appConfig.name}</h1>
+            <p className="text-sm text-muted">Acesse sua area de gestao ou acompanhamento.</p>
           </div>
         </div>
 

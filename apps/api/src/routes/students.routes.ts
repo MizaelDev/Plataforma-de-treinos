@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { auditLog } from "../services/audit.service.js";
+import { calculateInvoiceCharges } from "../services/finance.service.js";
 import { prisma } from "../services/prisma.js";
 import { createStudent, updateStudent } from "../services/students.service.js";
 import { asyncRoute } from "../utils/async-route.js";
@@ -47,7 +48,7 @@ studentsRouter.post(
   "/",
   requireRoles("ADMIN", "PROFESSOR"),
   asyncRoute(async (request, response) => {
-    const student = await createStudent(request.body, {
+    const result = await createStudent(request.body, {
       organizationId: request.user!.organizationId
     });
 
@@ -56,10 +57,10 @@ studentsRouter.post(
       actorUserId: request.user!.id,
       action: "CREATE",
       entity: "Student",
-      entityId: student.id
+      entityId: result.student.id
     });
 
-    response.status(201).json({ student: removeInternalStudentFields(student) });
+    response.status(201).json({ student: removeInternalStudentFields(result.student), access: result.access });
   })
 );
 
@@ -71,8 +72,21 @@ studentsRouter.get(
     const student = await prisma.student.findFirst({
       where: { id, organizationId: request.user!.organizationId, deletedAt: null },
       include: {
-        invoices: { orderBy: { dueDate: "desc" } },
-        studentPlans: { include: { plan: true }, orderBy: { createdAt: "desc" } }
+        invoices: { include: { plan: true }, orderBy: { dueDate: "desc" } },
+        studentPlans: { include: { plan: true }, orderBy: { createdAt: "desc" } },
+        assessments: {
+          where: { deletedAt: null },
+          include: { professor: { select: { id: true, name: true } } },
+          orderBy: { assessedAt: "desc" }
+        },
+        workoutPlans: {
+          where: { deletedAt: null },
+          include: {
+            professor: { select: { id: true, name: true } },
+            days: { include: { exercises: { orderBy: { order: "asc" } } }, orderBy: { label: "asc" } }
+          },
+          orderBy: [{ isActive: "desc" }, { createdAt: "desc" }]
+        }
       }
     });
 
@@ -81,7 +95,17 @@ studentsRouter.get(
       return;
     }
 
-    response.json({ student: removeInternalStudentFields(student) });
+    response.json({
+      student: {
+        ...removeInternalStudentFields(student),
+        invoices: await Promise.all(
+          student.invoices.map(async (invoice) => ({
+            ...invoice,
+            charges: await calculateInvoiceCharges(request.user!.organizationId, invoice.dueDate, invoice.amount)
+          }))
+        )
+      }
+    });
   })
 );
 

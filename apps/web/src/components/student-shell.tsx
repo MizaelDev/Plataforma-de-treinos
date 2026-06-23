@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Activity, CreditCard, Dumbbell, Home, LogOut, Menu, X } from "lucide-react";
 import { clearSession, getStoredUser, type SessionUser } from "@/lib/api";
+import { appConfig } from "@/lib/app-config";
 
 const links = [
   { href: "/student/dashboard", label: "Inicio", icon: Home },
@@ -76,9 +77,9 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link href="/student/dashboard" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-900 text-sm font-bold text-white">AL</div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-900 text-sm font-bold text-white">{appConfig.initials}</div>
             <div>
-              <p className="text-sm font-semibold text-ink">Area do aluno</p>
+              <p className="text-sm font-semibold text-ink">{appConfig.studentSubtitle}</p>
               <p className="text-xs text-muted">{user?.name ?? "Aluno"}</p>
             </div>
           </Link>

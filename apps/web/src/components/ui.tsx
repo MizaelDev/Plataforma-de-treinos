@@ -65,9 +65,9 @@ export function SectionCard({ children, className = "" }: { children: React.Reac
 
 export function StatusBadge({ status }: { status: string }) {
   const tone =
-    status === "PAGO" || status === "ATIVO"
+    status === "PAGO" || status === "ATIVO" || status === "EM DIA"
       ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-      : status === "ATRASADO" || status === "INATIVO"
+      : status === "ATRASADO" || status === "INATIVO" || status === "INADIMPLENTE" || status === "CANCELADO"
         ? "bg-red-50 text-red-700 ring-red-200"
         : "bg-amber-50 text-amber-700 ring-amber-200";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { BmiIndicator } from "@/components/bmi-indicator";
 import { StudentShell } from "@/components/student-shell";
 import { Alert, EmptyState, LoadingState, SectionCard } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -78,7 +79,7 @@ export default function StudentAssessmentsPage() {
                   <p className="text-base font-semibold text-ink">{new Date(assessment.assessedAt).toLocaleDateString("pt-BR")}</p>
                   <p className="text-sm text-muted">Professor: {assessment.professor?.name ?? "-"}</p>
                 </div>
-                <div className="rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white">IMC {formatMeasure(assessment.bmi)}</div>
+                <BmiIndicator value={assessment.bmi} />
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

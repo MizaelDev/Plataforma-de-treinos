@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { StudentShell } from "@/components/student-shell";
 import { Alert, EmptyState, LoadingState, SectionCard, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import type { InvoiceSummary } from "../types";
 
 export default function StudentFinancialPage() {
@@ -53,12 +53,15 @@ export default function StudentFinancialPage() {
           ) : (
             <SectionCard className="overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left text-sm">
+                <table className="w-full min-w-[980px] text-left text-sm">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-4 py-3">Plano</th>
                       <th className="px-4 py-3">Vencimento</th>
-                      <th className="px-4 py-3">Valor</th>
+                      <th className="px-4 py-3">Pagamento</th>
+                      <th className="px-4 py-3">Original</th>
+                      <th className="px-4 py-3">Multa</th>
+                      <th className="px-4 py-3">Juros</th>
                       <th className="px-4 py-3">Valor atualizado</th>
                       <th className="px-4 py-3">Status</th>
                     </tr>
@@ -67,9 +70,12 @@ export default function StudentFinancialPage() {
                     {invoices.map((invoice) => (
                       <tr key={invoice.id} className="border-t border-gray-100">
                         <td className="px-4 py-3 font-medium text-ink">{invoice.plan?.name ?? "Mensalidade"}</td>
-                        <td className="px-4 py-3 text-gray-600">{new Date(invoice.dueDate).toLocaleDateString("pt-BR")}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatDate(invoice.dueDate)}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatDate(invoice.paidAt)}</td>
                         <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.amount)}</td>
-                        <td className="px-4 py-3 font-semibold text-ink">{formatCurrency(invoice.charges?.total ?? invoice.amount)}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.fineAmount ?? 0)}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.interestAmount ?? 0)}</td>
+                        <td className="px-4 py-3 font-semibold text-ink">{formatCurrency(invoice.status === "PAGO" ? invoice.totalPaid ?? invoice.amount : invoice.charges?.total ?? invoice.amount)}</td>
                         <td className="px-4 py-3"><StatusBadge status={invoice.status} /></td>
                       </tr>
                     ))}

@@ -25,13 +25,16 @@ const planSelect = {
   id: true,
   name: true,
   value: true,
-  modality: true
+  modality: true,
+  dueDay: true
 };
 
 const invoiceSelect = {
   id: true,
   dueDate: true,
+  paidAt: true,
   amount: true,
+  totalPaid: true,
   status: true,
   plan: { select: planSelect }
 };
@@ -51,6 +54,24 @@ const assessmentSelect = {
   notes: true,
   professor: { select: { id: true, name: true } }
 };
+
+function nextDueDateFromPlan(dueDay?: number | null) {
+  if (!dueDay) return null;
+
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const dayInCurrentMonth = Math.min(dueDay, new Date(year, month + 1, 0).getDate());
+  const currentMonthDueDate = new Date(year, month, dayInCurrentMonth);
+
+  if (currentMonthDueDate >= new Date(year, month, today.getDate())) {
+    return currentMonthDueDate;
+  }
+
+  const nextMonth = month + 1;
+  const dayInNextMonth = Math.min(dueDay, new Date(year, nextMonth + 1, 0).getDate());
+  return new Date(year, nextMonth, dayInNextMonth);
+}
 
 studentAreaRouter.get(
   "/dashboard",
@@ -116,11 +137,14 @@ studentAreaRouter.get(
         charges: await calculateInvoiceCharges(organizationId, invoice.dueDate, invoice.amount)
       }))
     );
+    const currentPlan = student.studentPlans[0]?.plan ?? latestInvoices.find((invoice) => invoice.plan)?.plan ?? null;
+    const nextDueDate = nextInvoice?.dueDate ?? nextDueDateFromPlan(currentPlan?.dueDay ?? null);
 
     response.json({
       student,
-      plan: student.studentPlans[0]?.plan ?? null,
+      plan: currentPlan,
       nextInvoice,
+      nextDueDate,
       nextInvoiceCharges: nextInvoice ? await calculateInvoiceCharges(organizationId, nextInvoice.dueDate, nextInvoice.amount) : null,
       financialStatus: overdueCount > 0 ? "INADIMPLENTE" : "EM_DIA",
       latestInvoices: invoicesWithCharges,

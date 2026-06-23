@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CalendarClock, CreditCard, Dumbbell, Scale, ShieldCheck } from "lucide-react";
+import { BmiIndicator } from "@/components/bmi-indicator";
 import { StudentShell } from "@/components/student-shell";
 import { Alert, EmptyState, LoadingState, SectionCard, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import type { AssessmentSummary, InvoiceSummary, PlanSummary, StudentSummary, WorkoutSummary } from "../types";
 
 type StudentDashboard = {
   student: StudentSummary;
   plan: PlanSummary | null;
   nextInvoice: InvoiceSummary | null;
+  nextDueDate: string | null;
   nextInvoiceCharges: InvoiceSummary["charges"] | null;
   financialStatus: "EM_DIA" | "INADIMPLENTE";
   latestInvoices: InvoiceSummary[];
@@ -19,13 +21,13 @@ type StudentDashboard = {
   activeWorkout: WorkoutSummary | null;
 };
 
-function InfoCard({ icon: Icon, label, value }: { icon: typeof CreditCard; label: string; value: string }) {
+function InfoCard({ icon: Icon, label, value }: { icon: typeof CreditCard; label: string; value: ReactNode }) {
   return (
     <SectionCard className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-muted">{label}</p>
-          <p className="mt-1 text-lg font-semibold text-ink">{value}</p>
+          <div className="mt-1 text-lg font-semibold text-ink">{value}</div>
         </div>
         <div className="rounded-md bg-gray-900 p-2 text-white">
           <Icon className="h-4 w-4" />
@@ -88,8 +90,8 @@ export default function StudentDashboardPage() {
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <InfoCard icon={CreditCard} label="Plano contratado" value={data.plan?.name ?? "Sem plano ativo"} />
-            <InfoCard icon={CalendarClock} label="Proximo vencimento" value={data.nextInvoice ? new Date(data.nextInvoice.dueDate).toLocaleDateString("pt-BR") : "Sem mensalidade"} />
-            <InfoCard icon={Scale} label="Ultima avaliacao" value={data.latestAssessment ? `IMC ${data.latestAssessment.bmi}` : "Sem avaliacao"} />
+            <InfoCard icon={CalendarClock} label="Proximo vencimento" value={data.nextDueDate ? formatDate(data.nextDueDate) : "Sem mensalidade"} />
+            <InfoCard icon={Scale} label="Ultima avaliacao" value={data.latestAssessment ? <BmiIndicator value={data.latestAssessment.bmi} compact /> : "Sem avaliacao"} />
             <InfoCard icon={Dumbbell} label="Ficha ativa" value={workoutSummary} />
           </section>
 
@@ -107,7 +109,7 @@ export default function StudentDashboardPage() {
                         <p className="text-xs text-muted">Vencimento {new Date(invoice.dueDate).toLocaleDateString("pt-BR")}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-ink">{formatCurrency(invoice.charges?.total ?? invoice.amount)}</p>
+                        <p className="text-sm font-semibold text-ink">{formatCurrency(invoice.status === "PAGO" ? invoice.totalPaid ?? invoice.amount : invoice.charges?.total ?? invoice.amount)}</p>
                         <StatusBadge status={invoice.status} />
                       </div>
                     </div>

@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import type { StudentInput } from "@academia/shared";
 import { studentSchema } from "@academia/shared";
 import { hashCpf, normalizeCpf } from "../utils/cpf.js";
@@ -64,7 +65,50 @@ export async function createStudent(payload: unknown, context: StudentContext) {
     throw new AppError(409, "Ja existe um aluno cadastrado com este CPF.");
   }
 
-  return prisma.student.create({ data });
+  const temporaryPassword = "123456";
+
+  if (input.createAccess) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email },
+      select: { id: true }
+    });
+
+    if (existingUser) {
+      throw new AppError(409, "Ja existe um usuario cadastrado com este e-mail. Use outro e-mail ou vincule o aluno manualmente.");
+    }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (!input.createAccess) {
+      const student = await tx.student.create({ data });
+      return { student, access: null };
+    }
+
+    const user = await tx.user.create({
+      data: {
+        organizationId: context.organizationId,
+        name: data.fullName,
+        email: data.email,
+        passwordHash: await bcrypt.hash(temporaryPassword, 10),
+        role: "ALUNO"
+      }
+    });
+
+    const student = await tx.student.create({
+      data: {
+        ...data,
+        userId: user.id
+      }
+    });
+
+    return {
+      student,
+      access: {
+        email: user.email,
+        temporaryPassword
+      }
+    };
+  });
 }
 
 export async function updateStudent(id: string, payload: unknown, context: StudentContext) {

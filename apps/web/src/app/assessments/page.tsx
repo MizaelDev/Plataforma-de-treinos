@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { BmiIndicator } from "@/components/bmi-indicator";
 import { Alert, Button, EmptyState, LoadingState, SectionCard, fieldClass, textareaClass } from "@/components/ui";
 import { api } from "@/lib/api";
 import { normalizeMoneyInput } from "@/lib/format";
@@ -175,7 +176,7 @@ export default function AssessmentsPage() {
 
           <div className="rounded-md border border-teal-100 bg-teal-50 px-3 py-2 text-sm">
             <span className="text-muted">IMC calculado</span>
-            <p className="mt-1 text-lg font-semibold text-brand">{bmiPreview}</p>
+            <div className="mt-2">{bmiPreview === "-" ? <p className="text-lg font-semibold text-brand">-</p> : <BmiIndicator value={bmiPreview} compact />}</div>
           </div>
 
           {[
@@ -243,7 +244,7 @@ export default function AssessmentsPage() {
                     <td className="px-4 py-3 text-gray-600">{new Date(assessment.assessedAt).toLocaleDateString("pt-BR")}</td>
                     <td className="px-4 py-3 text-gray-600">{assessment.weightKg} kg</td>
                     <td className="px-4 py-3 text-gray-600">{assessment.heightCm} cm</td>
-                    <td className="px-4 py-3 font-semibold text-gray-900">{assessment.bmi}</td>
+                    <td className="px-4 py-3"><BmiIndicator value={assessment.bmi} compact /></td>
                     <td className="px-4 py-3 text-gray-600">{assessment.professor?.name ?? "-"}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">

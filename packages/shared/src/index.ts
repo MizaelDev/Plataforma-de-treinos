@@ -43,7 +43,8 @@ export const studentSchema = z.object({
   enrollmentDate: z.string().datetime().or(z.string().date()),
   modality: z.string().trim().min(2, "Informe a modalidade."),
   notes: z.string().optional(),
-  status: z.enum(studentStatuses).default("ATIVO")
+  status: z.enum(studentStatuses).default("ATIVO"),
+  createAccess: z.coerce.boolean().default(false)
 });
 
 export const planSchema = z.object({

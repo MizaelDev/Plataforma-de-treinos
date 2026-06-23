@@ -15,7 +15,7 @@ import {
   fieldClass
 } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatCurrency, normalizeMoneyInput } from "@/lib/format";
+import { formatCurrency, formatDate, normalizeMoneyInput } from "@/lib/format";
 
 type Student = { id: string; fullName: string };
 type Plan = { id: string; name: string; value: string };
@@ -24,7 +24,9 @@ type Invoice = {
   student: Student;
   plan?: Plan | null;
   dueDate: string;
+  paidAt?: string | null;
   amount: string;
+  totalPaid?: string | number;
   status: "PAGO" | "PENDENTE" | "ATRASADO" | "CANCELADO";
   charges?: { total: string; fineAmount: string; interestAmount: string; overdueDays: number };
 };
@@ -105,9 +107,13 @@ export default function InvoicesPage() {
     setError("");
     setSuccess("");
     try {
-      await api(`/invoices/${id}/pay`, { method: "POST" });
+      const payload = await api<{ nextInvoice?: { dueDate: string } | null }>(`/invoices/${id}/pay`, { method: "POST" });
       await load();
-      setSuccess("Pagamento registrado com sucesso.");
+      setSuccess(
+        payload.nextInvoice
+          ? `Pagamento registrado com sucesso. Proxima mensalidade criada para ${formatDate(payload.nextInvoice.dueDate)}.`
+          : "Pagamento registrado com sucesso."
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     }
@@ -213,13 +219,17 @@ export default function InvoicesPage() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[940px] text-left text-sm">
+                <table className="w-full min-w-[1120px] text-left text-sm">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-4 py-3">Aluno</th>
                       <th className="px-4 py-3">Plano</th>
                       <th className="px-4 py-3">Vencimento</th>
-                      <th className="px-4 py-3">Total atualizado</th>
+                      <th className="px-4 py-3">Pagamento</th>
+                      <th className="px-4 py-3">Valor original</th>
+                      <th className="px-4 py-3">Multa</th>
+                      <th className="px-4 py-3">Juros</th>
+                      <th className="px-4 py-3">Atualizado</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Acao</th>
                     </tr>
@@ -229,8 +239,12 @@ export default function InvoicesPage() {
                       <tr key={invoice.id} className="border-t border-gray-100 hover:bg-gray-50/70">
                         <td className="px-4 py-3 font-medium text-ink">{invoice.student.fullName}</td>
                         <td className="px-4 py-3 text-gray-600">{invoice.plan?.name ?? "-"}</td>
-                        <td className="px-4 py-3 text-gray-600">{new Date(invoice.dueDate).toLocaleDateString("pt-BR")}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(invoice.charges?.total ?? invoice.amount)}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatDate(invoice.dueDate)}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatDate(invoice.paidAt)}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.amount)}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.fineAmount ?? 0)}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.interestAmount ?? 0)}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(invoice.status === "PAGO" ? invoice.totalPaid ?? invoice.amount : invoice.charges?.total ?? invoice.amount)}</td>
                         <td className="px-4 py-3"><StatusBadge status={invoice.status} /></td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">

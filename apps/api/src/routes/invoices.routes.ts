@@ -143,7 +143,8 @@ invoicesRouter.post(
   asyncRoute(async (request, response) => {
     const id = requiredParam(request, "id");
     const invoice = await prisma.invoice.findFirst({
-      where: { id, organizationId: request.user!.organizationId }
+      where: { id, organizationId: request.user!.organizationId },
+      include: { plan: true }
     });
 
     if (!invoice) {
@@ -152,19 +153,66 @@ invoicesRouter.post(
     }
 
     const charges = await calculateInvoiceCharges(request.user!.organizationId, invoice.dueDate, invoice.amount);
-    const paidInvoice = await prisma.invoice.update({
-      where: { id: invoice.id },
-      data: {
-        status: "PAGO",
-        paidAt: new Date(),
-        fineAmount: charges.fineAmount,
-        interestAmount: charges.interestAmount,
-        totalPaid: charges.total
+    const { paidInvoice, nextInvoice, createdNextInvoice } = await prisma.$transaction(async (tx) => {
+      const paidInvoice = await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          status: "PAGO",
+          paidAt: new Date(),
+          fineAmount: charges.fineAmount,
+          interestAmount: charges.interestAmount,
+          totalPaid: charges.total
+        }
+      });
+
+      if (!invoice.planId || !invoice.plan) {
+        return { paidInvoice, nextInvoice: null, createdNextInvoice: false };
       }
+
+      const nextDueDate = new Date(invoice.dueDate);
+      nextDueDate.setDate(nextDueDate.getDate() + invoice.plan.durationDays);
+
+      const existingNextInvoice = await tx.invoice.findFirst({
+        where: {
+          organizationId: request.user!.organizationId,
+          studentId: invoice.studentId,
+          planId: invoice.planId,
+          status: { in: ["PENDENTE", "ATRASADO"] },
+          dueDate: { gt: invoice.dueDate }
+        },
+        orderBy: { dueDate: "asc" }
+      });
+
+      if (existingNextInvoice) {
+        return { paidInvoice, nextInvoice: existingNextInvoice, createdNextInvoice: false };
+      }
+
+      const nextInvoice = await tx.invoice.create({
+        data: {
+          organizationId: request.user!.organizationId,
+          studentId: invoice.studentId,
+          planId: invoice.planId,
+          dueDate: nextDueDate,
+          amount: invoice.plan.value,
+          status: "PENDENTE"
+        }
+      });
+
+      return { paidInvoice, nextInvoice, createdNextInvoice: true };
     });
 
     await auditLog({ organizationId: request.user!.organizationId, actorUserId: request.user!.id, action: "PAY", entity: "Invoice", entityId: invoice.id });
-    response.json({ invoice: paidInvoice, charges });
+    if (createdNextInvoice && nextInvoice) {
+      await auditLog({
+        organizationId: request.user!.organizationId,
+        actorUserId: request.user!.id,
+        action: "CREATE_NEXT_INVOICE",
+        entity: "Invoice",
+        entityId: nextInvoice.id
+      });
+    }
+
+    response.json({ invoice: paidInvoice, charges, nextInvoice });
   })
 );
 

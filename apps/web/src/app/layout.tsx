@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { appConfig } from "@/lib/app-config";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Academia Platform",
-  description: "Gestao de academia, personal trainer e artes marciais"
+  title: appConfig.name,
+  description: "Sistema de gestao para academias, personal trainers e artes marciais"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

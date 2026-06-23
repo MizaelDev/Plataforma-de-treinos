@@ -12,12 +12,15 @@ export type PlanSummary = {
   name: string;
   value: string;
   modality: string;
+  dueDay?: number;
 };
 
 export type InvoiceSummary = {
   id: string;
   dueDate: string;
+  paidAt?: string | null;
   amount: string;
+  totalPaid?: string | number;
   status: "PAGO" | "PENDENTE" | "ATRASADO" | "CANCELADO";
   plan?: PlanSummary | null;
   charges?: {

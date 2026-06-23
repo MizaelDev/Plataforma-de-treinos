@@ -28,6 +28,7 @@ type Plan = {
 };
 
 const pageSize = 8;
+const modalityOptions = ["LUTA", "MUSCULAÇÃO"];
 const initialPlanForm = () => ({ name: "", value: "", modality: "", durationDays: "30", dueDay: "10", isActive: true });
 const planFields: Array<{ name: "name" | "value" | "modality" | "durationDays" | "dueDay"; label: string }> = [
   { name: "name", label: "Nome" },
@@ -122,14 +123,23 @@ export default function PlansPage() {
           {planFields.map(({ name, label }) => (
             <label key={name} className="text-sm font-medium text-gray-700">
               {label}
-              <input
-                className={fieldClass}
-                value={form[name]}
-                onChange={(event) => {
-                  const value = name === "value" ? normalizeMoneyInput(event.target.value) : event.target.value;
-                  setForm((current) => ({ ...current, [name]: value }));
-                }}
-              />
+              {name === "modality" ? (
+                <select className={fieldClass} value={form.modality} onChange={(event) => setForm((current) => ({ ...current, modality: event.target.value }))}>
+                  <option value="">Selecione</option>
+                  {modalityOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className={fieldClass}
+                  value={form[name]}
+                  onChange={(event) => {
+                    const value = name === "value" ? normalizeMoneyInput(event.target.value) : event.target.value;
+                    setForm((current) => ({ ...current, [name]: value }));
+                  }}
+                />
+              )}
             </label>
           ))}
           <div className="flex gap-2 md:col-span-2 xl:col-span-5">
