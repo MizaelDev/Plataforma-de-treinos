@@ -23,8 +23,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
 
   useEffect(() => {
-    setUser(getStoredUser());
-  }, []);
+    const storedUser = getStoredUser();
+    if (storedUser?.role === "ALUNO") {
+      router.replace("/student/dashboard");
+      return;
+    }
+    setUser(storedUser);
+  }, [router]);
 
   function logout() {
     clearSession();

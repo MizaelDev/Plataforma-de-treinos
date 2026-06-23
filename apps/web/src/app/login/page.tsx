@@ -34,7 +34,7 @@ export default function LoginPage() {
       }
 
       setSession(payload.token, payload.user);
-      router.push("/");
+      router.push(payload.user.role === "ALUNO" ? "/student/dashboard" : "/");
     } catch {
       setError("Nao foi possivel conectar com a API.");
     } finally {

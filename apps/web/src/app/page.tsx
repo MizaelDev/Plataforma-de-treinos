@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, CalendarClock, CircleDollarSign, Users, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
-import { api, getToken } from "@/lib/api";
+import { api, getStoredUser, getToken } from "@/lib/api";
 import { Alert, LoadingState, SectionCard } from "@/components/ui";
 
 type Dashboard = {
@@ -27,6 +27,12 @@ export default function AdminDashboardPage() {
       router.push("/login");
       return;
     }
+
+    if (getStoredUser()?.role === "ALUNO") {
+      router.replace("/student/dashboard");
+      return;
+    }
+
     api<Dashboard>("/dashboard/admin")
       .then(setData)
       .catch((err) => setError(err.message))
