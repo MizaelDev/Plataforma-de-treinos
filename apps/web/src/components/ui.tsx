@@ -49,18 +49,35 @@ export function LoadingState({ label = "Carregando dados..." }: { label?: string
   );
 }
 
-export function EmptyState({ title, description }: { title: string; description: string }) {
+export function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
-    <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white px-4 text-center">
+    <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white px-4 py-6 text-center">
       <SearchX className="h-7 w-7 text-gray-400" />
       <p className="mt-3 text-sm font-semibold text-gray-900">{title}</p>
       <p className="mt-1 max-w-md text-sm text-muted">{description}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }
 
 export function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <section className={`rounded-lg border border-gray-200 bg-white shadow-sm ${className}`}>{children}</section>;
+}
+
+export function FieldGroup({ title, description, children, className = "" }: { title: string; description?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-lg border border-gray-200 bg-white p-4 ${className}`}>
+      <div className="mb-4">
+        <p className="text-sm font-semibold text-ink">{title}</p>
+        {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{children}</div>
+    </div>
+  );
+}
+
+export function MobileRecordCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm ${className}`}>{children}</div>;
 }
 
 export function StatusBadge({ status }: { status: string }) {

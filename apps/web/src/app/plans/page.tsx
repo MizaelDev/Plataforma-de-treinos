@@ -8,6 +8,7 @@ import {
   ConfirmModal,
   EmptyState,
   LoadingState,
+  MobileRecordCard,
   Pagination,
   SectionCard,
   StatusBadge,
@@ -202,7 +203,30 @@ export default function PlansPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="grid gap-3 p-4 md:hidden">
+                {visiblePlans.map((plan) => (
+                  <MobileRecordCard key={plan.id}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-ink">{plan.name}</p>
+                        <p className="mt-1 text-sm text-muted">{plan.modality}</p>
+                      </div>
+                      <StatusBadge status={plan.isActive ? "ATIVO" : "INATIVO"} />
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                      <div><p className="text-xs text-muted">Valor</p><p className="font-semibold text-ink">{formatCurrency(plan.value)}</p></div>
+                      <div><p className="text-xs text-muted">Duracao</p><p className="font-medium text-ink">{plan.durationDays} dias</p></div>
+                      <div><p className="text-xs text-muted">Vencimento</p><p className="font-medium text-ink">Dia {plan.dueDay}</p></div>
+                    </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      <Button type="button" variant="secondary" onClick={() => editPlan(plan)}>Editar</Button>
+                      {plan.isActive && <Button type="button" variant="danger" onClick={() => setPlanToDelete(plan)}>Inativar</Button>}
+                    </div>
+                  </MobileRecordCard>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[860px] text-left text-sm">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>

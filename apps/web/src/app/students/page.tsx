@@ -9,6 +9,7 @@ import {
   ConfirmModal,
   EmptyState,
   LoadingState,
+  MobileRecordCard,
   Pagination,
   SectionCard,
   StatusBadge,
@@ -263,7 +264,32 @@ export default function StudentsPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="grid gap-3 p-4 md:hidden">
+                {visibleStudents.map((student) => (
+                  <MobileRecordCard key={student.id}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Link href={`/students/${student.id}`} className="font-semibold text-ink hover:text-brand">{student.fullName}</Link>
+                        <p className="mt-1 text-sm text-muted">{student.email}</p>
+                      </div>
+                      <StatusBadge status={student.status} />
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div><p className="text-xs text-muted">Telefone</p><p className="font-medium text-ink">{student.phone}</p></div>
+                      <div><p className="text-xs text-muted">Modalidade</p><p className="font-medium text-ink">{student.modality}</p></div>
+                    </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                      <Link href={`/students/${student.id}`} className="inline-flex h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">
+                        Ver perfil
+                      </Link>
+                      <Button type="button" variant="secondary" onClick={() => editStudent(student)}>Editar</Button>
+                      {student.status === "ATIVO" && <Button type="button" variant="danger" onClick={() => setStudentToDelete(student)}>Inativar</Button>}
+                    </div>
+                  </MobileRecordCard>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[820px] text-left text-sm">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>

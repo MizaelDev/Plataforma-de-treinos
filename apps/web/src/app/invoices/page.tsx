@@ -8,6 +8,7 @@ import {
   ConfirmModal,
   EmptyState,
   LoadingState,
+  MobileRecordCard,
   Pagination,
   SectionCard,
   StatusBadge,
@@ -249,7 +250,36 @@ export default function InvoicesPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="grid gap-3 p-4 md:hidden">
+                {visibleInvoices.map((invoice) => (
+                  <MobileRecordCard key={invoice.id}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-ink">{invoice.student.fullName}</p>
+                        <p className="mt-1 text-sm text-muted">{invoice.plan?.name ?? "Mensalidade"}</p>
+                      </div>
+                      <StatusBadge status={invoice.status} />
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div><p className="text-xs text-muted">Vencimento</p><p className="font-medium text-ink">{formatDate(invoice.dueDate)}</p></div>
+                      <div><p className="text-xs text-muted">Pagamento</p><p className="font-medium text-ink">{formatDate(invoice.paidAt)}</p></div>
+                      <div><p className="text-xs text-muted">Original</p><p className="font-medium text-ink">{formatCurrency(invoice.amount)}</p></div>
+                      <div><p className="text-xs text-muted">Atualizado</p><p className="font-semibold text-ink">{formatCurrency(invoiceDisplayAmount(invoice))}</p></div>
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                      <Button type="button" variant="secondary" onClick={() => editInvoice(invoice)}>Editar</Button>
+                      {invoice.status !== "PAGO" && invoice.status !== "CANCELADO" && (
+                        <Button type="button" variant="secondary" onClick={() => pay(invoice.id)}>Marcar pago</Button>
+                      )}
+                      {invoice.status !== "CANCELADO" && (
+                        <Button type="button" variant="danger" onClick={() => setInvoiceToCancel(invoice)}>Cancelar</Button>
+                      )}
+                    </div>
+                  </MobileRecordCard>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[1120px] text-left text-sm">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>

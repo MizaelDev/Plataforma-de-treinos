@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { BmiIndicator } from "@/components/bmi-indicator";
-import { Alert, Button, EmptyState, LoadingState, SectionCard, fieldClass, textareaClass } from "@/components/ui";
+import { Alert, Button, EmptyState, FieldGroup, LoadingState, MobileRecordCard, SectionCard, fieldClass, textareaClass } from "@/components/ui";
 import { api } from "@/lib/api";
 import { normalizeMoneyInput } from "@/lib/format";
 
@@ -197,51 +197,57 @@ export default function AssessmentsPage() {
       {success && <Alert type="success" message={success} />}
 
       <SectionCard className="mb-6 p-4">
-        <form onSubmit={submit} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <label className="text-sm font-medium text-gray-700">
-            Aluno
-            <select className={fieldClass} value={form.studentId} onChange={(event) => setForm((current) => ({ ...current, studentId: event.target.value }))}>
-              <option value="">Selecione</option>
-              {students.map((student) => <option key={student.id} value={student.id}>{student.fullName}</option>)}
-            </select>
-          </label>
-          <label className="text-sm font-medium text-gray-700">
-            Data da avaliacao
-            <input className={fieldClass} type="date" value={form.assessedAt} onChange={(event) => setForm((current) => ({ ...current, assessedAt: event.target.value }))} />
-          </label>
-          <label className="text-sm font-medium text-gray-700">
-            Peso (kg)
-            <input className={fieldClass} value={form.weightKg} onChange={(event) => setForm((current) => ({ ...current, weightKg: normalizeMoneyInput(event.target.value) }))} />
-          </label>
-          <label className="text-sm font-medium text-gray-700">
-            Altura (cm)
-            <input className={fieldClass} value={form.heightCm} onChange={(event) => setForm((current) => ({ ...current, heightCm: normalizeMoneyInput(event.target.value) }))} />
-          </label>
-
-          <div className="rounded-md border border-teal-100 bg-teal-50 px-3 py-2 text-sm">
-            <span className="text-muted">IMC calculado</span>
-            <div className="mt-2">{bmiPreview === "-" ? <p className="text-lg font-semibold text-brand">-</p> : <BmiIndicator value={bmiPreview} compact />}</div>
-          </div>
-
-          {bodyMeasurementFields.map(([name, label]) => (
-            <label key={name} className="text-sm font-medium text-gray-700">
-              {label}
-              <input
-                className={fieldClass}
-                value={(form as Record<string, string>)[name]}
-                onChange={(event) => {
-                  const value = numberFields.has(name) ? normalizeMoneyInput(event.target.value) : event.target.value;
-                  setForm((current) => ({ ...current, [name]: value }));
-                }}
-              />
+        <form onSubmit={submit} className="space-y-4">
+          <FieldGroup title="Dados principais" description="Selecione o aluno e informe os dados usados para calcular o IMC automaticamente.">
+            <label className="text-sm font-medium text-gray-700">
+              Aluno
+              <select className={fieldClass} value={form.studentId} onChange={(event) => setForm((current) => ({ ...current, studentId: event.target.value }))}>
+                <option value="">Selecione</option>
+                {students.map((student) => <option key={student.id} value={student.id}>{student.fullName}</option>)}
+              </select>
             </label>
-          ))}
+            <label className="text-sm font-medium text-gray-700">
+              Data da avaliacao
+              <input className={fieldClass} type="date" value={form.assessedAt} onChange={(event) => setForm((current) => ({ ...current, assessedAt: event.target.value }))} />
+            </label>
+            <label className="text-sm font-medium text-gray-700">
+              Peso (kg)
+              <input className={fieldClass} value={form.weightKg} onChange={(event) => setForm((current) => ({ ...current, weightKg: normalizeMoneyInput(event.target.value) }))} />
+            </label>
+            <label className="text-sm font-medium text-gray-700">
+              Altura (cm)
+              <input className={fieldClass} value={form.heightCm} onChange={(event) => setForm((current) => ({ ...current, heightCm: normalizeMoneyInput(event.target.value) }))} />
+            </label>
 
-          <label className="text-sm font-medium text-gray-700 md:col-span-2 xl:col-span-4">
-            Observacoes
-            <textarea className={textareaClass} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
-          </label>
-          <div className="flex gap-2 md:col-span-2 xl:col-span-4">
+            <div className="rounded-md border border-teal-100 bg-teal-50 px-3 py-2 text-sm">
+              <span className="text-muted">IMC calculado</span>
+              <div className="mt-2">{bmiPreview === "-" ? <p className="text-lg font-semibold text-brand">-</p> : <BmiIndicator value={bmiPreview} compact />}</div>
+            </div>
+          </FieldGroup>
+
+          <FieldGroup title="Composicao e medidas corporais" description="Preencha somente as medidas realizadas. Campos em branco serao ignorados.">
+            {bodyMeasurementFields.map(([name, label]) => (
+              <label key={name} className="text-sm font-medium text-gray-700">
+                {label}
+                <input
+                  className={fieldClass}
+                  value={(form as Record<string, string>)[name]}
+                  onChange={(event) => {
+                    const value = numberFields.has(name) ? normalizeMoneyInput(event.target.value) : event.target.value;
+                    setForm((current) => ({ ...current, [name]: value }));
+                  }}
+                />
+              </label>
+            ))}
+          </FieldGroup>
+
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <label className="text-sm font-medium text-gray-700">
+              Observacoes
+              <textarea className={textareaClass} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
+            </label>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Button type="submit" disabled={saving}>{saving ? "Salvando..." : editingId ? "Atualizar avaliacao" : "Cadastrar avaliacao"}</Button>
             {editingId && <Button type="button" variant="secondary" onClick={() => { setEditingId(null); setForm(emptyForm()); }}>Cancelar edicao</Button>}
           </div>
@@ -261,7 +267,30 @@ export default function AssessmentsPage() {
         <EmptyState title="Nenhuma avaliacao cadastrada" description="Cadastre a primeira avaliacao para acompanhar a evolucao fisica dos alunos." />
       ) : (
         <SectionCard className="overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="grid gap-3 p-4 md:hidden">
+            {assessments.map((assessment) => (
+              <MobileRecordCard key={assessment.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-ink">{assessment.student.fullName}</p>
+                    <p className="mt-1 text-sm text-muted">{new Date(assessment.assessedAt).toLocaleDateString("pt-BR")}</p>
+                  </div>
+                  <BmiIndicator value={assessment.bmi} compact />
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div><p className="text-xs text-muted">Peso</p><p className="font-medium text-ink">{assessment.weightKg} kg</p></div>
+                  <div><p className="text-xs text-muted">Altura</p><p className="font-medium text-ink">{assessment.heightCm} cm</p></div>
+                  <div><p className="text-xs text-muted">Professor</p><p className="font-medium text-ink">{assessment.professor?.name ?? "-"}</p></div>
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <Button type="button" variant="secondary" onClick={() => editAssessment(assessment)}>Editar</Button>
+                  <Button type="button" variant="danger" onClick={() => removeAssessment(assessment.id)}>Excluir</Button>
+                </div>
+              </MobileRecordCard>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[980px] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>

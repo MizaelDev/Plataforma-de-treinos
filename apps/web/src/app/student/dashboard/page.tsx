@@ -69,19 +69,20 @@ export default function StudentDashboardPage() {
         <LoadingState />
       ) : data ? (
         <>
-          <SectionCard className="mb-5 p-5">
+          <SectionCard className="mb-5 overflow-hidden border-gray-900 bg-gray-900 p-5 text-white">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 {data.student.photoUrl ? (
-                  <img src={data.student.photoUrl} alt={data.student.fullName} className="h-16 w-16 rounded-full object-cover" />
+                  <img src={data.student.photoUrl} alt={data.student.fullName} className="h-16 w-16 rounded-full object-cover ring-2 ring-white/20" />
                 ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-900 text-lg font-bold text-white">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-lg font-bold text-gray-900">
                     {data.student.fullName.slice(0, 2).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <h2 className="text-xl font-semibold text-ink">{data.student.fullName}</h2>
-                  <p className="text-sm text-muted">{data.student.modality}</p>
+                  <h2 className="text-xl font-semibold">{data.student.fullName}</h2>
+                  <p className="text-sm text-gray-300">{data.student.modality}</p>
+                  <p className="mt-2 text-sm text-gray-300">{data.plan ? `${data.plan.name} - ${formatCurrency(data.plan.value)}` : "Sem plano ativo"}</p>
                 </div>
               </div>
               <StatusBadge status={data.financialStatus === "EM_DIA" ? "EM DIA" : "INADIMPLENTE"} />

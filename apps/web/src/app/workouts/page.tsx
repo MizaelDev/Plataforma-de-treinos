@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { Alert, Button, EmptyState, LoadingState, SectionCard, StatusBadge, fieldClass, textareaClass } from "@/components/ui";
+import { Alert, Button, EmptyState, LoadingState, MobileRecordCard, SectionCard, StatusBadge, fieldClass, textareaClass } from "@/components/ui";
 import { api } from "@/lib/api";
 
 type Student = { id: string; fullName: string };
@@ -241,7 +241,29 @@ export default function WorkoutsPage() {
         <EmptyState title="Nenhuma ficha cadastrada" description="Crie uma ficha para organizar treinos A-E e acompanhar a prescricao do aluno." />
       ) : (
         <SectionCard className="overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="grid gap-3 p-4 md:hidden">
+            {workouts.map((workout) => (
+              <MobileRecordCard key={workout.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-ink">{workout.name}</p>
+                    <p className="mt-1 text-sm text-muted">{workout.student.fullName}</p>
+                  </div>
+                  <StatusBadge status={workout.isActive ? "ATIVO" : "INATIVO"} />
+                </div>
+                <div className="mt-4 space-y-2 text-sm">
+                  <div><p className="text-xs text-muted">Objetivo</p><p className="font-medium text-ink">{workout.goal}</p></div>
+                  <div><p className="text-xs text-muted">Periodo</p><p className="font-medium text-ink">{new Date(workout.startDate).toLocaleDateString("pt-BR")} - {workout.endDate ? new Date(workout.endDate).toLocaleDateString("pt-BR") : "sem fim"}</p></div>
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <Button type="button" variant="secondary" onClick={() => editWorkout(workout)}>Editar</Button>
+                  <Button type="button" variant="danger" onClick={() => inactivateWorkout(workout.id)}>Inativar</Button>
+                </div>
+              </MobileRecordCard>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
