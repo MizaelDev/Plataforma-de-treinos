@@ -13,6 +13,7 @@ import { assessmentsRouter } from "./routes/assessments.routes.js";
 import { workoutsRouter } from "./routes/workouts.routes.js";
 import { settingsRouter } from "./routes/settings.routes.js";
 import { studentAreaRouter } from "./routes/student.routes.js";
+import { auditRouter } from "./routes/audit.routes.js";
 
 export const app = express();
 
@@ -34,5 +35,6 @@ app.use("/assessments", assessmentsRouter);
 app.use("/workouts", workoutsRouter);
 app.use("/settings", settingsRouter);
 app.use("/student", studentAreaRouter);
+app.use("/audit-logs", auditRouter);
 
 app.use(errorHandler);

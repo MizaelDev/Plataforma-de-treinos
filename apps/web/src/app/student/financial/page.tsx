@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { StudentShell } from "@/components/student-shell";
 import { Alert, EmptyState, LoadingState, SectionCard, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, invoiceDisplayAmount } from "@/lib/format";
 import type { InvoiceSummary } from "../types";
 
 export default function StudentFinancialPage() {
@@ -75,7 +75,7 @@ export default function StudentFinancialPage() {
                         <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.amount)}</td>
                         <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.fineAmount ?? 0)}</td>
                         <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.interestAmount ?? 0)}</td>
-                        <td className="px-4 py-3 font-semibold text-ink">{formatCurrency(invoice.status === "PAGO" ? invoice.totalPaid ?? invoice.amount : invoice.charges?.total ?? invoice.amount)}</td>
+                        <td className="px-4 py-3 font-semibold text-ink">{formatCurrency(invoiceDisplayAmount(invoice))}</td>
                         <td className="px-4 py-3"><StatusBadge status={invoice.status} /></td>
                       </tr>
                     ))}

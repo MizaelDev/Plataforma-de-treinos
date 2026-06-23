@@ -82,7 +82,7 @@ workoutsRouter.delete(
     const id = requiredParam(request, "id");
     await prisma.workoutPlan.update({
       where: { id, organizationId: request.user!.organizationId },
-      data: { isActive: false, deletedAt: new Date() }
+      data: { isActive: false }
     });
 
     await auditLog({ organizationId: request.user!.organizationId, actorUserId: request.user!.id, action: "INACTIVATE", entity: "WorkoutPlan", entityId: id });

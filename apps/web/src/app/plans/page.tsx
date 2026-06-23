@@ -45,6 +45,7 @@ export default function PlansPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialPlanForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [page, setPage] = useState(1);
@@ -83,15 +84,37 @@ export default function PlansPage() {
     setSuccess("");
     setSaving(true);
     try {
-      await api("/plans", { method: "POST", body: JSON.stringify(form) });
+      await api(editingId ? `/plans/${editingId}` : "/plans", {
+        method: editingId ? "PATCH" : "POST",
+        body: JSON.stringify(form)
+      });
       setForm(initialPlanForm());
+      setEditingId(null);
       await load();
-      setSuccess("Plano criado com sucesso.");
+      setSuccess(editingId ? "Plano atualizado com sucesso." : "Plano criado com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function editPlan(plan: Plan) {
+    setEditingId(plan.id);
+    setForm({
+      name: plan.name,
+      value: String(plan.value).replace(".", ","),
+      modality: plan.modality,
+      durationDays: String(plan.durationDays),
+      dueDay: String(plan.dueDay),
+      isActive: plan.isActive
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function resetForm() {
+    setForm(initialPlanForm());
+    setEditingId(null);
   }
 
   async function inactivatePlan(plan: Plan) {
@@ -142,9 +165,16 @@ export default function PlansPage() {
               )}
             </label>
           ))}
+          <label className="text-sm font-medium text-gray-700">
+            Status
+            <select className={fieldClass} value={form.isActive ? "ATIVO" : "INATIVO"} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.value === "ATIVO" }))}>
+              <option value="ATIVO">Ativo</option>
+              <option value="INATIVO">Inativo</option>
+            </select>
+          </label>
           <div className="flex gap-2 md:col-span-2 xl:col-span-5">
-            <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Criar plano"}</Button>
-            <Button type="button" variant="secondary" onClick={() => setForm(initialPlanForm())}>Cancelar</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Salvando..." : editingId ? "Atualizar plano" : "Criar plano"}</Button>
+            <Button type="button" variant="secondary" onClick={resetForm}>Cancelar</Button>
           </div>
         </form>
       </SectionCard>
@@ -195,11 +225,16 @@ export default function PlansPage() {
                         <td className="px-4 py-3 text-gray-600">Dia {plan.dueDay}</td>
                         <td className="px-4 py-3"><StatusBadge status={plan.isActive ? "ATIVO" : "INATIVO"} /></td>
                         <td className="px-4 py-3">
-                          {plan.isActive && (
-                            <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setPlanToDelete(plan)}>
-                              Inativar
+                          <div className="flex gap-2">
+                            <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => editPlan(plan)}>
+                              Editar
                             </Button>
-                          )}
+                            {plan.isActive && (
+                              <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setPlanToDelete(plan)}>
+                                Inativar
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

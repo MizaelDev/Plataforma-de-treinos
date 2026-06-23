@@ -41,6 +41,15 @@ export type AssessmentSummary = {
   muscleMassKg?: string | null;
   abdominalCircumferenceCm?: string | null;
   armCircumferenceCm?: string | null;
+  leftArmCircumferenceCm?: string | null;
+  rightArmCircumferenceCm?: string | null;
+  leftLegCircumferenceCm?: string | null;
+  rightLegCircumferenceCm?: string | null;
+  chestCircumferenceCm?: string | null;
+  shoulderCircumferenceCm?: string | null;
+  gluteCircumferenceCm?: string | null;
+  leftCalfCircumferenceCm?: string | null;
+  rightCalfCircumferenceCm?: string | null;
   waistCircumferenceCm?: string | null;
   hipCircumferenceCm?: string | null;
   notes?: string | null;

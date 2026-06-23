@@ -73,9 +73,9 @@ plansRouter.delete(
     const id = requiredParam(request, "id");
     await prisma.plan.update({
       where: { id, organizationId: request.user!.organizationId },
-      data: { deletedAt: new Date(), isActive: false }
+      data: { isActive: false }
     });
-    await auditLog({ organizationId: request.user!.organizationId, actorUserId: request.user!.id, action: "SOFT_DELETE", entity: "Plan", entityId: id });
+    await auditLog({ organizationId: request.user!.organizationId, actorUserId: request.user!.id, action: "INACTIVATE", entity: "Plan", entityId: id });
     response.status(204).send();
   })
 );

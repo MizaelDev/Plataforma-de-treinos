@@ -26,7 +26,8 @@ const planSelect = {
   name: true,
   value: true,
   modality: true,
-  dueDay: true
+  dueDay: true,
+  durationDays: true
 };
 
 const invoiceSelect = {
@@ -49,28 +50,42 @@ const assessmentSelect = {
   muscleMassKg: true,
   abdominalCircumferenceCm: true,
   armCircumferenceCm: true,
+  leftArmCircumferenceCm: true,
+  rightArmCircumferenceCm: true,
+  leftLegCircumferenceCm: true,
+  rightLegCircumferenceCm: true,
+  chestCircumferenceCm: true,
+  shoulderCircumferenceCm: true,
+  gluteCircumferenceCm: true,
+  leftCalfCircumferenceCm: true,
+  rightCalfCircumferenceCm: true,
   waistCircumferenceCm: true,
   hipCircumferenceCm: true,
   notes: true,
   professor: { select: { id: true, name: true } }
 };
 
-function nextDueDateFromPlan(dueDay?: number | null) {
-  if (!dueDay) return null;
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
 
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const dayInCurrentMonth = Math.min(dueDay, new Date(year, month + 1, 0).getDate());
-  const currentMonthDueDate = new Date(year, month, dayInCurrentMonth);
+function addDays(date: Date | string, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
 
-  if (currentMonthDueDate >= new Date(year, month, today.getDate())) {
-    return currentMonthDueDate;
+function nextDueDateFromCycle(baseDate?: Date | string | null, durationDays?: number | null) {
+  if (!baseDate || !durationDays) return null;
+
+  let dueDate = addDays(baseDate, durationDays);
+  const today = startOfDay(new Date());
+
+  while (startOfDay(dueDate) < today) {
+    dueDate = addDays(dueDate, durationDays);
   }
 
-  const nextMonth = month + 1;
-  const dayInNextMonth = Math.min(dueDay, new Date(year, nextMonth + 1, 0).getDate());
-  return new Date(year, nextMonth, dayInNextMonth);
+  return dueDate;
 }
 
 studentAreaRouter.get(
@@ -137,8 +152,13 @@ studentAreaRouter.get(
         charges: await calculateInvoiceCharges(organizationId, invoice.dueDate, invoice.amount)
       }))
     );
-    const currentPlan = student.studentPlans[0]?.plan ?? latestInvoices.find((invoice) => invoice.plan)?.plan ?? null;
-    const nextDueDate = nextInvoice?.dueDate ?? nextDueDateFromPlan(currentPlan?.dueDay ?? null);
+    const activeStudentPlan = student.studentPlans[0] ?? null;
+    const latestInvoiceWithPlan = latestInvoices.find((invoice) => invoice.plan);
+    const currentPlan = activeStudentPlan?.plan ?? latestInvoiceWithPlan?.plan ?? null;
+    const nextDueDate =
+      nextInvoice?.dueDate ??
+      nextDueDateFromCycle(latestInvoiceWithPlan?.paidAt ?? latestInvoiceWithPlan?.dueDate, latestInvoiceWithPlan?.plan?.durationDays ?? null) ??
+      nextDueDateFromCycle(activeStudentPlan?.startDate, currentPlan?.durationDays ?? null);
 
     response.json({
       student,

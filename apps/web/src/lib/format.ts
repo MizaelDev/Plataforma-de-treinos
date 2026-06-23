@@ -43,3 +43,18 @@ export function formatDecimal(value?: string | number | null, suffix = "") {
   if (value === undefined || value === null || value === "") return "-";
   return `${String(value).replace(".", ",")}${suffix}`;
 }
+
+export function invoiceDisplayAmount(invoice: {
+  status?: string;
+  amount: string | number;
+  totalPaid?: string | number | null;
+  charges?: { total?: string | number | null } | null;
+}) {
+  const totalPaid = Number(invoice.totalPaid ?? 0);
+
+  if (invoice.status === "PAGO") {
+    return totalPaid > 0 ? invoice.totalPaid ?? invoice.amount : invoice.amount;
+  }
+
+  return invoice.charges?.total ?? invoice.amount;
+}

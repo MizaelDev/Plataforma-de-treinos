@@ -6,7 +6,7 @@ import { BmiIndicator } from "@/components/bmi-indicator";
 import { StudentShell } from "@/components/student-shell";
 import { Alert, EmptyState, LoadingState, SectionCard, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, invoiceDisplayAmount } from "@/lib/format";
 import type { AssessmentSummary, InvoiceSummary, PlanSummary, StudentSummary, WorkoutSummary } from "../types";
 
 type StudentDashboard = {
@@ -109,7 +109,7 @@ export default function StudentDashboardPage() {
                         <p className="text-xs text-muted">Vencimento {new Date(invoice.dueDate).toLocaleDateString("pt-BR")}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-ink">{formatCurrency(invoice.status === "PAGO" ? invoice.totalPaid ?? invoice.amount : invoice.charges?.total ?? invoice.amount)}</p>
+                        <p className="text-sm font-semibold text-ink">{formatCurrency(invoiceDisplayAmount(invoice))}</p>
                         <StatusBadge status={invoice.status} />
                       </div>
                     </div>

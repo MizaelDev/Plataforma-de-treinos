@@ -21,6 +21,15 @@ type Assessment = {
   muscleMassKg?: string | null;
   abdominalCircumferenceCm?: string | null;
   armCircumferenceCm?: string | null;
+  leftArmCircumferenceCm?: string | null;
+  rightArmCircumferenceCm?: string | null;
+  leftLegCircumferenceCm?: string | null;
+  rightLegCircumferenceCm?: string | null;
+  chestCircumferenceCm?: string | null;
+  shoulderCircumferenceCm?: string | null;
+  gluteCircumferenceCm?: string | null;
+  leftCalfCircumferenceCm?: string | null;
+  rightCalfCircumferenceCm?: string | null;
   waistCircumferenceCm?: string | null;
   hipCircumferenceCm?: string | null;
   notes?: string | null;
@@ -36,12 +45,38 @@ const emptyForm = () => ({
   muscleMassKg: "",
   abdominalCircumferenceCm: "",
   armCircumferenceCm: "",
+  leftArmCircumferenceCm: "",
+  rightArmCircumferenceCm: "",
+  leftLegCircumferenceCm: "",
+  rightLegCircumferenceCm: "",
+  chestCircumferenceCm: "",
+  shoulderCircumferenceCm: "",
+  gluteCircumferenceCm: "",
+  leftCalfCircumferenceCm: "",
+  rightCalfCircumferenceCm: "",
   waistCircumferenceCm: "",
   hipCircumferenceCm: "",
   notes: ""
 });
 
-const numberFields = new Set(["weightKg", "heightCm", "bodyFatPercentage", "muscleMassKg", "abdominalCircumferenceCm", "armCircumferenceCm", "waistCircumferenceCm", "hipCircumferenceCm"]);
+const bodyMeasurementFields = [
+  ["bodyFatPercentage", "% gordura"],
+  ["muscleMassKg", "Massa muscular"],
+  ["abdominalCircumferenceCm", "Abdominal"],
+  ["chestCircumferenceCm", "Peitoral"],
+  ["shoulderCircumferenceCm", "Ombros"],
+  ["gluteCircumferenceCm", "Gluteos"],
+  ["leftArmCircumferenceCm", "Braco esquerdo"],
+  ["rightArmCircumferenceCm", "Braco direito"],
+  ["leftLegCircumferenceCm", "Perna esquerda"],
+  ["rightLegCircumferenceCm", "Perna direita"],
+  ["leftCalfCircumferenceCm", "Panturrilha esquerda"],
+  ["rightCalfCircumferenceCm", "Panturrilha direita"],
+  ["waistCircumferenceCm", "Cintura"],
+  ["hipCircumferenceCm", "Quadril"]
+] as const;
+
+const numberFields = new Set(["weightKg", "heightCm", ...bodyMeasurementFields.map(([name]) => name)]);
 
 export default function AssessmentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -122,6 +157,15 @@ export default function AssessmentsPage() {
       muscleMassKg: String(assessment.muscleMassKg ?? "").replace(".", ","),
       abdominalCircumferenceCm: String(assessment.abdominalCircumferenceCm ?? "").replace(".", ","),
       armCircumferenceCm: String(assessment.armCircumferenceCm ?? "").replace(".", ","),
+      leftArmCircumferenceCm: String(assessment.leftArmCircumferenceCm ?? "").replace(".", ","),
+      rightArmCircumferenceCm: String(assessment.rightArmCircumferenceCm ?? "").replace(".", ","),
+      leftLegCircumferenceCm: String(assessment.leftLegCircumferenceCm ?? "").replace(".", ","),
+      rightLegCircumferenceCm: String(assessment.rightLegCircumferenceCm ?? "").replace(".", ","),
+      chestCircumferenceCm: String(assessment.chestCircumferenceCm ?? "").replace(".", ","),
+      shoulderCircumferenceCm: String(assessment.shoulderCircumferenceCm ?? "").replace(".", ","),
+      gluteCircumferenceCm: String(assessment.gluteCircumferenceCm ?? "").replace(".", ","),
+      leftCalfCircumferenceCm: String(assessment.leftCalfCircumferenceCm ?? "").replace(".", ","),
+      rightCalfCircumferenceCm: String(assessment.rightCalfCircumferenceCm ?? "").replace(".", ","),
       waistCircumferenceCm: String(assessment.waistCircumferenceCm ?? "").replace(".", ","),
       hipCircumferenceCm: String(assessment.hipCircumferenceCm ?? "").replace(".", ","),
       notes: assessment.notes ?? ""
@@ -179,14 +223,7 @@ export default function AssessmentsPage() {
             <div className="mt-2">{bmiPreview === "-" ? <p className="text-lg font-semibold text-brand">-</p> : <BmiIndicator value={bmiPreview} compact />}</div>
           </div>
 
-          {[
-            ["bodyFatPercentage", "% gordura"],
-            ["muscleMassKg", "Massa muscular"],
-            ["abdominalCircumferenceCm", "Abdominal"],
-            ["armCircumferenceCm", "Braco"],
-            ["waistCircumferenceCm", "Cintura"],
-            ["hipCircumferenceCm", "Quadril"]
-          ].map(([name, label]) => (
+          {bodyMeasurementFields.map(([name, label]) => (
             <label key={name} className="text-sm font-medium text-gray-700">
               {label}
               <input

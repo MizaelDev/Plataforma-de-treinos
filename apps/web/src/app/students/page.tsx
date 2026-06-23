@@ -22,10 +22,17 @@ import { formatCpf, formatPhone } from "@/lib/format";
 type Student = {
   id: string;
   fullName: string;
+  cpf: string;
+  birthDate: string;
   email: string;
   phone: string;
+  address: string;
+  photoUrl?: string | null;
+  enrollmentDate: string;
   modality: string;
+  notes?: string | null;
   status: "ATIVO" | "INATIVO";
+  user?: { id: string; email: string; isActive: boolean } | null;
 };
 
 const pageSize = 8;
@@ -53,6 +60,7 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialStudentForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [page, setPage] = useState(1);
@@ -93,14 +101,25 @@ export default function StudentsPage() {
     setSuccess("");
     setSaving(true);
     try {
-      const payload = await api<{ access?: { email: string; temporaryPassword: string } | null }>("/students", { method: "POST", body: JSON.stringify(form) });
-      setForm(initialStudentForm());
-      await load();
-      setSuccess(
-        payload.access
-          ? `Aluno cadastrado com sucesso. Acesso criado: ${payload.access.email} / senha temporaria ${payload.access.temporaryPassword}.`
-          : "Aluno cadastrado com sucesso."
+      const payload = await api<{ access?: { email: string; temporaryPassword: string } | null }>(
+        editingId ? `/students/${editingId}` : "/students",
+        {
+          method: editingId ? "PATCH" : "POST",
+          body: JSON.stringify(editingId ? { ...form, createAccess: undefined } : form)
+        }
       );
+      setForm(initialStudentForm());
+      setEditingId(null);
+      await load();
+      if (editingId) {
+        setSuccess("Aluno atualizado com sucesso.");
+      } else {
+        setSuccess(
+          payload.access
+            ? `Aluno cadastrado com sucesso. Acesso criado: ${payload.access.email} / senha temporaria ${payload.access.temporaryPassword}.`
+            : "Aluno cadastrado com sucesso."
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
@@ -108,14 +127,38 @@ export default function StudentsPage() {
     }
   }
 
-  async function deleteStudent(student: Student) {
+  function editStudent(student: Student) {
+    setEditingId(student.id);
+    setForm({
+      fullName: student.fullName,
+      cpf: formatCpf(student.cpf),
+      birthDate: student.birthDate.slice(0, 10),
+      phone: formatPhone(student.phone),
+      address: student.address,
+      email: student.email,
+      photoUrl: student.photoUrl ?? "",
+      enrollmentDate: student.enrollmentDate.slice(0, 10),
+      modality: student.modality,
+      notes: student.notes ?? "",
+      status: student.status,
+      createAccess: false
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function resetForm() {
+    setForm(initialStudentForm());
+    setEditingId(null);
+  }
+
+  async function inactivateStudent(student: Student) {
     setError("");
     setSuccess("");
     try {
       await api(`/students/${student.id}`, { method: "DELETE" });
       setStudentToDelete(null);
       await load();
-      setSuccess("Aluno excluido da listagem.");
+      setSuccess("Aluno inativado com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     }
@@ -126,7 +169,7 @@ export default function StudentsPage() {
       <header className="mb-6">
         <p className="text-sm font-semibold text-brand">Cadastros</p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">Alunos</h1>
-        <p className="mt-1 text-sm text-muted">Cadastro inicial com dados pessoais, matricula e modalidade.</p>
+        <p className="mt-1 text-sm text-muted">Cadastro com dados pessoais, matricula, modalidade e acesso do aluno.</p>
       </header>
 
       {error && <Alert type="error" message={error} />}
@@ -166,6 +209,13 @@ export default function StudentsPage() {
               ))}
             </select>
           </label>
+          <label className="text-sm font-medium text-gray-700">
+            Status
+            <select className={fieldClass} value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}>
+              <option value="ATIVO">Ativo</option>
+              <option value="INATIVO">Inativo</option>
+            </select>
+          </label>
           <label className="text-sm font-medium text-gray-700 md:col-span-2 xl:col-span-3">
             Observacoes
             <textarea className={textareaClass} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
@@ -175,16 +225,17 @@ export default function StudentsPage() {
               className="mt-1 h-4 w-4 rounded border-gray-300 text-brand"
               type="checkbox"
               checked={form.createAccess}
+              disabled={!!editingId}
               onChange={(event) => setForm((current) => ({ ...current, createAccess: event.target.checked }))}
             />
             <span>
               <span className="block font-semibold text-ink">Criar acesso do aluno</span>
-              <span className="block text-muted">Cria um usuario ALUNO usando o e-mail informado e senha temporaria 123456.</span>
+              <span className="block text-muted">{editingId ? "Use o perfil do aluno para criar ou redefinir acesso." : "Cria um usuario ALUNO usando o e-mail informado e uma senha temporaria."}</span>
             </span>
           </label>
           <div className="flex gap-2 md:col-span-2 xl:col-span-3">
-            <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Cadastrar aluno"}</Button>
-            <Button type="button" variant="secondary" onClick={() => setForm(initialStudentForm())}>Cancelar</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Salvando..." : editingId ? "Atualizar aluno" : "Cadastrar aluno"}</Button>
+            <Button type="button" variant="secondary" onClick={resetForm}>Cancelar</Button>
           </div>
         </form>
       </SectionCard>
@@ -241,9 +292,14 @@ export default function StudentsPage() {
                             <Link href={`/students/${student.id}`} className="inline-flex h-8 items-center rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">
                               Ver perfil
                             </Link>
-                            <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setStudentToDelete(student)}>
-                              Excluir
+                            <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => editStudent(student)}>
+                              Editar
                             </Button>
+                            {student.status === "ATIVO" && (
+                              <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setStudentToDelete(student)}>
+                                Inativar
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -259,11 +315,11 @@ export default function StudentsPage() {
 
       <ConfirmModal
         open={!!studentToDelete}
-        title="Excluir aluno"
-        description={`O aluno ${studentToDelete?.fullName ?? ""} sera removido da listagem.`}
-        confirmLabel="Excluir"
+        title="Inativar aluno"
+        description={`O aluno ${studentToDelete?.fullName ?? ""} sera marcado como inativo e o acesso dele sera bloqueado.`}
+        confirmLabel="Inativar"
         onCancel={() => setStudentToDelete(null)}
-        onConfirm={() => studentToDelete && deleteStudent(studentToDelete)}
+        onConfirm={() => studentToDelete && inactivateStudent(studentToDelete)}
       />
     </AppShell>
   );

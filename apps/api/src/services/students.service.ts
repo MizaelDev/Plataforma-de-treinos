@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import type { StudentInput } from "@academia/shared";
 import { studentSchema } from "@academia/shared";
 import { hashCpf, normalizeCpf } from "../utils/cpf.js";
@@ -8,6 +9,10 @@ import { prisma } from "./prisma.js";
 type StudentContext = {
   organizationId: string;
 };
+
+function generateTemporaryPassword() {
+  return randomBytes(4).toString("hex");
+}
 
 function parseStudentDate(value: string, fieldLabel: string) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00.000Z`) : new Date(value);
@@ -65,7 +70,7 @@ export async function createStudent(payload: unknown, context: StudentContext) {
     throw new AppError(409, "Ja existe um aluno cadastrado com este CPF.");
   }
 
-  const temporaryPassword = "123456";
+  const temporaryPassword = generateTemporaryPassword();
 
   if (input.createAccess) {
     const existingUser = await prisma.user.findUnique({
@@ -136,20 +141,98 @@ export async function updateStudent(id: string, payload: unknown, context: Stude
     }
   }
 
-  return prisma.student.update({
-    where: { id, organizationId: context.organizationId },
-    data: {
-      ...(input.fullName && { fullName: input.fullName.trim() }),
-      ...(cpf && { cpf, cpfHash }),
-      ...(input.birthDate && { birthDate: parseStudentDate(input.birthDate, "Data de nascimento") }),
-      ...(input.phone && { phone: input.phone.trim() }),
-      ...(input.address && { address: input.address.trim() }),
-      ...(input.email && { email: input.email.trim().toLowerCase() }),
-      ...(input.photoUrl !== undefined && { photoUrl: input.photoUrl.trim() || null }),
-      ...(input.enrollmentDate && { enrollmentDate: parseStudentDate(input.enrollmentDate, "Data de matricula") }),
-      ...(input.modality && { modality: input.modality.trim() }),
-      ...(input.notes !== undefined && { notes: input.notes?.trim() || null }),
-      ...(input.status && { status: input.status })
+  return prisma.$transaction(async (tx) => {
+    const student = await tx.student.update({
+      where: { id, organizationId: context.organizationId },
+      data: {
+        ...(input.fullName && { fullName: input.fullName.trim() }),
+        ...(cpf && { cpf, cpfHash }),
+        ...(input.birthDate && { birthDate: parseStudentDate(input.birthDate, "Data de nascimento") }),
+        ...(input.phone && { phone: input.phone.trim() }),
+        ...(input.address && { address: input.address.trim() }),
+        ...(input.email && { email: input.email.trim().toLowerCase() }),
+        ...(input.photoUrl !== undefined && { photoUrl: input.photoUrl.trim() || null }),
+        ...(input.enrollmentDate && { enrollmentDate: parseStudentDate(input.enrollmentDate, "Data de matricula") }),
+        ...(input.modality && { modality: input.modality.trim() }),
+        ...(input.notes !== undefined && { notes: input.notes?.trim() || null }),
+        ...(input.status && { status: input.status })
+      }
+    });
+
+    if (student.userId && (input.fullName || input.email || input.status)) {
+      await tx.user.update({
+        where: { id: student.userId },
+        data: {
+          ...(input.fullName && { name: student.fullName }),
+          ...(input.email && { email: student.email }),
+          ...(input.status && { isActive: input.status === "ATIVO" })
+        }
+      });
     }
+
+    return student;
+  });
+}
+
+export async function createOrResetStudentAccess(id: string, context: StudentContext) {
+  const student = await prisma.student.findFirst({
+    where: { id, organizationId: context.organizationId, deletedAt: null },
+    include: { user: true }
+  });
+
+  if (!student) {
+    throw new AppError(404, "Aluno nao encontrado.");
+  }
+
+  if (!student.email) {
+    throw new AppError(400, "Informe um e-mail valido no cadastro do aluno antes de criar o acesso.");
+  }
+
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+
+  return prisma.$transaction(async (tx) => {
+    if (student.userId && student.user) {
+      const user = await tx.user.update({
+        where: { id: student.userId },
+        data: {
+          name: student.fullName,
+          email: student.email,
+          passwordHash,
+          isActive: student.status === "ATIVO"
+        },
+        select: { id: true, email: true, isActive: true }
+      });
+
+      return { user, temporaryPassword, created: false };
+    }
+
+    const existingUser = await tx.user.findUnique({
+      where: { email: student.email },
+      select: { id: true }
+    });
+
+    if (existingUser) {
+      throw new AppError(409, "Ja existe um usuario cadastrado com este e-mail. Use outro e-mail no aluno ou ajuste o usuario existente.");
+    }
+
+    const user = await tx.user.create({
+      data: {
+        organizationId: context.organizationId,
+        name: student.fullName,
+        email: student.email,
+        passwordHash,
+        role: "ALUNO",
+        isActive: student.status === "ATIVO"
+      },
+      select: { id: true, email: true, isActive: true }
+    });
+
+    await tx.student.update({
+      where: { id: student.id },
+      data: { userId: user.id }
+    });
+
+    return { user, temporaryPassword, created: true };
   });
 }

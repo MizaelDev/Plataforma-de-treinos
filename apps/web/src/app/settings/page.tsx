@@ -4,13 +4,22 @@ import { FormEvent, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Alert, Button, LoadingState, SectionCard, StatusBadge, fieldClass } from "@/components/ui";
 import { api, getStoredUser, type SessionUser } from "@/lib/api";
-import { normalizeMoneyInput } from "@/lib/format";
+import { formatDateTime, normalizeMoneyInput } from "@/lib/format";
 
 type FinancialSettings = {
   id: string;
   fixedFinePercentage: string;
   dailyInterestPercentage: string;
   monthlyInterestPercentage: string;
+};
+
+type AuditLog = {
+  id: string;
+  action: string;
+  entity: string;
+  entityId?: string | null;
+  createdAt: string;
+  actor?: { name: string; email: string; role: string } | null;
 };
 
 const emptyFinancialForm = () => ({
@@ -27,17 +36,22 @@ export default function SettingsPage() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [form, setForm] = useState(emptyFinancialForm);
   const [loading, setLoading] = useState(true);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   async function loadFinancialSettings() {
-    const payload = await api<{ settings: FinancialSettings }>("/settings/financial");
+    const [payload, auditPayload] = await Promise.all([
+      api<{ settings: FinancialSettings }>("/settings/financial"),
+      api<{ logs: AuditLog[] }>("/audit-logs")
+    ]);
     setForm({
       fixedFinePercentage: decimalToInput(payload.settings.fixedFinePercentage),
       dailyInterestPercentage: decimalToInput(payload.settings.dailyInterestPercentage),
       monthlyInterestPercentage: decimalToInput(payload.settings.monthlyInterestPercentage)
     });
+    setAuditLogs(auditPayload.logs);
   }
 
   useEffect(() => {
@@ -143,6 +157,48 @@ export default function SettingsPage() {
                 <Button type="button" variant="secondary" onClick={loadFinancialSettings} disabled={saving}>Cancelar</Button>
               </div>
             </form>
+          </SectionCard>
+
+          <SectionCard className="p-5 lg:col-span-2">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-ink">Auditoria recente</p>
+                <p className="mt-1 text-sm text-muted">Ultimas acoes administrativas registradas no sistema.</p>
+              </div>
+              <StatusBadge status="ATIVO" />
+            </div>
+
+            <div className="mt-4 overflow-x-auto">
+              {auditLogs.length === 0 ? (
+                <div className="rounded-md border border-dashed border-gray-200 p-4 text-sm text-muted">Nenhum evento de auditoria registrado ainda.</div>
+              ) : (
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                    <tr>
+                      <th className="px-4 py-3">Data</th>
+                      <th className="px-4 py-3">Usuario</th>
+                      <th className="px-4 py-3">Acao</th>
+                      <th className="px-4 py-3">Entidade</th>
+                      <th className="px-4 py-3">ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map((log) => (
+                      <tr key={log.id} className="border-t border-gray-100">
+                        <td className="px-4 py-3 text-gray-600">{formatDateTime(log.createdAt)}</td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-ink">{log.actor?.name ?? "Sistema"}</p>
+                          <p className="text-xs text-muted">{log.actor?.email ?? "-"}</p>
+                        </td>
+                        <td className="px-4 py-3"><StatusBadge status={log.action} /></td>
+                        <td className="px-4 py-3 text-gray-600">{log.entity}</td>
+                        <td className="px-4 py-3 text-xs text-muted">{log.entityId ?? "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </SectionCard>
         </div>
       )}

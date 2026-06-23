@@ -11,6 +11,25 @@ function formatMeasure(value?: string | null, suffix = "") {
   return value ? `${String(value).replace(".", ",")}${suffix}` : "-";
 }
 
+const assessmentMeasurements: Array<{ key: keyof AssessmentSummary; label: string; suffix?: string }> = [
+  { key: "weightKg", label: "Peso", suffix: " kg" },
+  { key: "heightCm", label: "Altura", suffix: " cm" },
+  { key: "bodyFatPercentage", label: "% gordura", suffix: "%" },
+  { key: "muscleMassKg", label: "Massa muscular", suffix: " kg" },
+  { key: "abdominalCircumferenceCm", label: "Abdominal", suffix: " cm" },
+  { key: "chestCircumferenceCm", label: "Peitoral", suffix: " cm" },
+  { key: "shoulderCircumferenceCm", label: "Ombros", suffix: " cm" },
+  { key: "gluteCircumferenceCm", label: "Gluteos", suffix: " cm" },
+  { key: "leftArmCircumferenceCm", label: "Braco esquerdo", suffix: " cm" },
+  { key: "rightArmCircumferenceCm", label: "Braco direito", suffix: " cm" },
+  { key: "leftLegCircumferenceCm", label: "Perna esquerda", suffix: " cm" },
+  { key: "rightLegCircumferenceCm", label: "Perna direita", suffix: " cm" },
+  { key: "leftCalfCircumferenceCm", label: "Panturrilha esquerda", suffix: " cm" },
+  { key: "rightCalfCircumferenceCm", label: "Panturrilha direita", suffix: " cm" },
+  { key: "waistCircumferenceCm", label: "Cintura", suffix: " cm" },
+  { key: "hipCircumferenceCm", label: "Quadril", suffix: " cm" }
+];
+
 export default function StudentAssessmentsPage() {
   const [assessments, setAssessments] = useState<AssessmentSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,14 +102,12 @@ export default function StudentAssessmentsPage() {
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Peso</p><p className="font-semibold text-ink">{formatMeasure(assessment.weightKg, " kg")}</p></div>
-                <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Altura</p><p className="font-semibold text-ink">{formatMeasure(assessment.heightCm, " cm")}</p></div>
-                <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">% gordura</p><p className="font-semibold text-ink">{formatMeasure(assessment.bodyFatPercentage, "%")}</p></div>
-                <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Massa muscular</p><p className="font-semibold text-ink">{formatMeasure(assessment.muscleMassKg, " kg")}</p></div>
-                <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Abdominal</p><p className="font-semibold text-ink">{formatMeasure(assessment.abdominalCircumferenceCm, " cm")}</p></div>
-                <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Braco</p><p className="font-semibold text-ink">{formatMeasure(assessment.armCircumferenceCm, " cm")}</p></div>
-                <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Cintura</p><p className="font-semibold text-ink">{formatMeasure(assessment.waistCircumferenceCm, " cm")}</p></div>
-                <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Quadril</p><p className="font-semibold text-ink">{formatMeasure(assessment.hipCircumferenceCm, " cm")}</p></div>
+                {assessmentMeasurements.map((measurement) => (
+                  <div key={measurement.key} className="rounded-md bg-gray-50 p-3">
+                    <p className="text-xs text-muted">{measurement.label}</p>
+                    <p className="font-semibold text-ink">{formatMeasure(assessment[measurement.key] as string | null | undefined, measurement.suffix)}</p>
+                  </div>
+                ))}
               </div>
 
               {assessment.notes && (

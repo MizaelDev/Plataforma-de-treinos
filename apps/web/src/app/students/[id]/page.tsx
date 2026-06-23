@@ -6,9 +6,9 @@ import { useParams } from "next/navigation";
 import { Activity, CreditCard, Dumbbell, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { BmiIndicator } from "@/components/bmi-indicator";
-import { Alert, EmptyState, LoadingState, SectionCard, StatusBadge } from "@/components/ui";
+import { Alert, Button, EmptyState, LoadingState, SectionCard, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatCpf, formatCurrency, formatDate, formatDecimal, formatPhone } from "@/lib/format";
+import { formatCpf, formatCurrency, formatDate, formatDecimal, formatPhone, invoiceDisplayAmount } from "@/lib/format";
 
 type Invoice = {
   id: string;
@@ -29,8 +29,33 @@ type Assessment = {
   bmi: string;
   bodyFatPercentage?: string | null;
   muscleMassKg?: string | null;
+  abdominalCircumferenceCm?: string | null;
+  leftArmCircumferenceCm?: string | null;
+  rightArmCircumferenceCm?: string | null;
+  leftLegCircumferenceCm?: string | null;
+  rightLegCircumferenceCm?: string | null;
+  chestCircumferenceCm?: string | null;
+  shoulderCircumferenceCm?: string | null;
+  gluteCircumferenceCm?: string | null;
+  leftCalfCircumferenceCm?: string | null;
+  rightCalfCircumferenceCm?: string | null;
+  waistCircumferenceCm?: string | null;
+  hipCircumferenceCm?: string | null;
   professor?: { id: string; name: string } | null;
 };
+
+const detailAssessmentMeasurements: Array<{ key: keyof Assessment; label: string; suffix?: string }> = [
+  { key: "weightKg", label: "Peso", suffix: " kg" },
+  { key: "bodyFatPercentage", label: "% gordura", suffix: "%" },
+  { key: "muscleMassKg", label: "Massa muscular", suffix: " kg" },
+  { key: "chestCircumferenceCm", label: "Peitoral", suffix: " cm" },
+  { key: "shoulderCircumferenceCm", label: "Ombros", suffix: " cm" },
+  { key: "gluteCircumferenceCm", label: "Gluteos", suffix: " cm" },
+  { key: "leftArmCircumferenceCm", label: "Braco esq.", suffix: " cm" },
+  { key: "rightArmCircumferenceCm", label: "Braco dir.", suffix: " cm" },
+  { key: "leftLegCircumferenceCm", label: "Perna esq.", suffix: " cm" },
+  { key: "rightLegCircumferenceCm", label: "Perna dir.", suffix: " cm" }
+];
 
 type WorkoutPlan = {
   id: string;
@@ -55,6 +80,7 @@ type StudentDetail = {
   modality: string;
   notes?: string | null;
   status: string;
+  user?: { id: string; email: string; isActive: boolean; updatedAt?: string } | null;
   studentPlans: Array<{ id: string; isActive: boolean; startDate: string; endDate?: string | null; plan: { id: string; name: string; value: string; modality: string } }>;
   invoices: Invoice[];
   assessments: Assessment[];
@@ -75,6 +101,8 @@ export default function StudentDetailPage() {
   const [student, setStudent] = useState<StudentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [savingAccess, setSavingAccess] = useState(false);
 
   useEffect(() => {
     if (!params.id) return;
@@ -83,6 +111,26 @@ export default function StudentDetailPage() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  async function resetAccess() {
+    if (!student) return;
+    setError("");
+    setSuccess("");
+    setSavingAccess(true);
+    try {
+      const payload = await api<{ access: { userId: string; email: string; temporaryPassword: string; created: boolean; isActive: boolean } }>(`/students/${student.id}/access`, { method: "POST" });
+      setStudent((current) => current ? { ...current, user: { id: payload.access.userId, email: payload.access.email, isActive: payload.access.isActive } } : current);
+      setSuccess(
+        payload.access.created
+          ? `Acesso criado: ${payload.access.email} / senha temporaria ${payload.access.temporaryPassword}.`
+          : `Senha redefinida: ${payload.access.email} / senha temporaria ${payload.access.temporaryPassword}.`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado.");
+    } finally {
+      setSavingAccess(false);
+    }
+  }
 
   const activePlan = useMemo(() => student?.studentPlans.find((item) => item.isActive)?.plan ?? student?.studentPlans[0]?.plan ?? null, [student]);
   const overdueInvoices = useMemo(
@@ -93,6 +141,7 @@ export default function StudentDetailPage() {
   return (
     <AppShell>
       {error && <Alert type="error" message={error} />}
+      {success && <Alert type="success" message={success} />}
 
       {loading ? (
         <LoadingState />
@@ -148,6 +197,23 @@ export default function StudentDetailPage() {
             </SectionCard>
           </section>
 
+          <SectionCard className="mt-5 p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-ink">Acesso do aluno</p>
+                <p className="mt-1 text-sm text-muted">
+                  {student.user ? `Usuario vinculado: ${student.user.email}` : "Este aluno ainda nao possui usuario de acesso."}
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <StatusBadge status={student.user?.isActive ? "ATIVO" : "INATIVO"} />
+                <Button type="button" variant="secondary" onClick={resetAccess} disabled={savingAccess}>
+                  {savingAccess ? "Gerando..." : student.user ? "Redefinir senha" : "Criar acesso"}
+                </Button>
+              </div>
+            </div>
+          </SectionCard>
+
           <section className="mt-5 grid gap-4 xl:grid-cols-2">
             <SectionCard className="overflow-hidden">
               <div className="border-b border-gray-200 px-4 py-3"><p className="text-sm font-semibold text-ink">Historico de mensalidades</p></div>
@@ -161,7 +227,7 @@ export default function StudentDetailPage() {
                           <td className="px-4 py-3">{invoice.plan?.name ?? "Mensalidade"}</td>
                           <td className="px-4 py-3">{formatDate(invoice.dueDate)}</td>
                           <td className="px-4 py-3">{formatCurrency(invoice.amount)}</td>
-                          <td className="px-4 py-3 font-semibold">{formatCurrency(invoice.charges?.total ?? invoice.amount)}</td>
+                          <td className="px-4 py-3 font-semibold">{formatCurrency(invoiceDisplayAmount(invoice))}</td>
                           <td className="px-4 py-3"><StatusBadge status={invoice.status} /></td>
                         </tr>
                       ))}
@@ -178,9 +244,13 @@ export default function StudentDetailPage() {
                   {student.assessments.slice(0, 5).map((assessment) => (
                     <div key={assessment.id} className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-4">
                       <div><p className="text-muted">Data</p><p className="font-medium">{formatDate(assessment.assessedAt)}</p></div>
-                      <div><p className="text-muted">Peso</p><p className="font-medium">{formatDecimal(assessment.weightKg, " kg")}</p></div>
                       <div><p className="text-muted">IMC</p><BmiIndicator value={assessment.bmi} compact /></div>
-                      <div><p className="text-muted">% gordura</p><p className="font-medium">{formatDecimal(assessment.bodyFatPercentage, "%")}</p></div>
+                      {detailAssessmentMeasurements.map((measurement) => (
+                        <div key={measurement.key}>
+                          <p className="text-muted">{measurement.label}</p>
+                          <p className="font-medium">{formatDecimal(assessment[measurement.key] as string | null | undefined, measurement.suffix)}</p>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>

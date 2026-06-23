@@ -15,7 +15,7 @@ import {
   fieldClass
 } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatCurrency, formatDate, normalizeMoneyInput } from "@/lib/format";
+import { formatCurrency, formatDate, invoiceDisplayAmount, normalizeMoneyInput } from "@/lib/format";
 
 type Student = { id: string; fullName: string };
 type Plan = { id: string; name: string; value: string };
@@ -44,6 +44,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialInvoiceForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [studentFilter, setStudentFilter] = useState("TODOS");
@@ -92,15 +93,36 @@ export default function InvoicesPage() {
     setSuccess("");
     setSaving(true);
     try {
-      await api("/invoices", { method: "POST", body: JSON.stringify({ ...form, planId: form.planId || undefined }) });
+      await api(editingId ? `/invoices/${editingId}` : "/invoices", {
+        method: editingId ? "PATCH" : "POST",
+        body: JSON.stringify({ ...form, planId: form.planId || undefined })
+      });
       setForm(initialInvoiceForm());
+      setEditingId(null);
       await load();
-      setSuccess("Mensalidade registrada com sucesso.");
+      setSuccess(editingId ? "Mensalidade atualizada com sucesso." : "Mensalidade registrada com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function editInvoice(invoice: Invoice) {
+    setEditingId(invoice.id);
+    setForm({
+      studentId: invoice.student.id,
+      planId: invoice.plan?.id ?? "",
+      dueDate: invoice.dueDate.slice(0, 10),
+      amount: String(invoice.amount).replace(".", ","),
+      status: invoice.status
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function resetForm() {
+    setForm(initialInvoiceForm());
+    setEditingId(null);
   }
 
   async function pay(id: string) {
@@ -179,9 +201,18 @@ export default function InvoicesPage() {
             Valor
             <input className={fieldClass} value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: normalizeMoneyInput(event.target.value) }))} />
           </label>
+          <label className="text-sm font-medium text-gray-700">
+            Status
+            <select className={fieldClass} value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}>
+              <option value="PENDENTE">Pendente</option>
+              <option value="PAGO">Pago</option>
+              <option value="ATRASADO">Atrasado</option>
+              <option value="CANCELADO">Cancelado</option>
+            </select>
+          </label>
           <div className="flex items-end gap-2">
-            <Button type="submit" className="w-full" disabled={saving}>{saving ? "Registrando..." : "Registrar"}</Button>
-            <Button type="button" variant="secondary" onClick={() => setForm(initialInvoiceForm())}>Cancelar</Button>
+            <Button type="submit" className="w-full" disabled={saving}>{saving ? "Salvando..." : editingId ? "Atualizar" : "Registrar"}</Button>
+            <Button type="button" variant="secondary" onClick={resetForm}>Cancelar</Button>
           </div>
         </form>
       </SectionCard>
@@ -244,10 +275,13 @@ export default function InvoicesPage() {
                         <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.amount)}</td>
                         <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.fineAmount ?? 0)}</td>
                         <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.interestAmount ?? 0)}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(invoice.status === "PAGO" ? invoice.totalPaid ?? invoice.amount : invoice.charges?.total ?? invoice.amount)}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(invoiceDisplayAmount(invoice))}</td>
                         <td className="px-4 py-3"><StatusBadge status={invoice.status} /></td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
+                            <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => editInvoice(invoice)}>
+                              Editar
+                            </Button>
                             {invoice.status !== "PAGO" && invoice.status !== "CANCELADO" && (
                               <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => pay(invoice.id)}>
                                 Marcar pago

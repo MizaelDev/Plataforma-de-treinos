@@ -3,7 +3,7 @@ import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { auditLog } from "../services/audit.service.js";
 import { calculateInvoiceCharges } from "../services/finance.service.js";
 import { prisma } from "../services/prisma.js";
-import { createStudent, updateStudent } from "../services/students.service.js";
+import { createOrResetStudentAccess, createStudent, updateStudent } from "../services/students.service.js";
 import { asyncRoute } from "../utils/async-route.js";
 import { requiredParam } from "../utils/http.js";
 
@@ -27,11 +27,16 @@ studentsRouter.get(
         id: true,
         fullName: true,
         email: true,
+        cpf: true,
+        birthDate: true,
         phone: true,
+        address: true,
         modality: true,
+        notes: true,
         status: true,
         photoUrl: true,
         enrollmentDate: true,
+        user: { select: { id: true, email: true, isActive: true } },
         studentPlans: {
           where: { isActive: true },
           include: { plan: true },
@@ -86,7 +91,8 @@ studentsRouter.get(
             days: { include: { exercises: { orderBy: { order: "asc" } } }, orderBy: { label: "asc" } }
           },
           orderBy: [{ isActive: "desc" }, { createdAt: "desc" }]
-        }
+        },
+        user: { select: { id: true, email: true, isActive: true, updatedAt: true } }
       }
     });
 
@@ -130,20 +136,57 @@ studentsRouter.patch(
   })
 );
 
-studentsRouter.delete(
-  "/:id",
+studentsRouter.post(
+  "/:id/access",
   requireRoles("ADMIN"),
   asyncRoute(async (request, response) => {
     const id = requiredParam(request, "id");
-    await prisma.student.update({
-      where: { id, organizationId: request.user!.organizationId },
-      data: { deletedAt: new Date(), status: "INATIVO" }
+    const access = await createOrResetStudentAccess(id, {
+      organizationId: request.user!.organizationId
     });
 
     await auditLog({
       organizationId: request.user!.organizationId,
       actorUserId: request.user!.id,
-      action: "SOFT_DELETE",
+      action: access.created ? "CREATE_ACCESS" : "RESET_ACCESS",
+      entity: "Student",
+      entityId: id,
+      metadata: { userId: access.user.id }
+    });
+
+    response.json({
+      access: {
+        userId: access.user.id,
+        email: access.user.email,
+        temporaryPassword: access.temporaryPassword,
+        isActive: access.user.isActive,
+        created: access.created
+      }
+    });
+  })
+);
+
+studentsRouter.delete(
+  "/:id",
+  requireRoles("ADMIN"),
+  asyncRoute(async (request, response) => {
+    const id = requiredParam(request, "id");
+    const student = await prisma.student.update({
+      where: { id, organizationId: request.user!.organizationId },
+      data: { status: "INATIVO" }
+    });
+
+    if (student.userId) {
+      await prisma.user.update({
+        where: { id: student.userId },
+        data: { isActive: false }
+      });
+    }
+
+    await auditLog({
+      organizationId: request.user!.organizationId,
+      actorUserId: request.user!.id,
+      action: "INACTIVATE",
       entity: "Student",
       entityId: id
     });
