@@ -22,12 +22,16 @@ export async function calculateInvoiceCharges(organizationId: string, dueDate: D
 
   const base = new Prisma.Decimal(amount);
   const fineAmount = base.mul(settings.fixedFinePercentage).div(100);
-  const dailyInterest = base.mul(settings.dailyInterestPercentage).div(100).mul(overdueDays);
-  const total = base.add(fineAmount).add(dailyInterest);
+  const dailyInterestAmount = base.mul(settings.dailyInterestPercentage).div(100).mul(overdueDays);
+  const monthlyInterestAmount = base.mul(settings.monthlyInterestPercentage).div(100).mul(overdueDays).div(30);
+  const interestAmount = dailyInterestAmount.add(monthlyInterestAmount);
+  const total = base.add(fineAmount).add(interestAmount);
 
   return {
     fineAmount: money(fineAmount),
-    interestAmount: money(dailyInterest),
+    interestAmount: money(interestAmount),
+    dailyInterestAmount: money(dailyInterestAmount),
+    monthlyInterestAmount: money(monthlyInterestAmount),
     total: money(total),
     overdueDays
   };

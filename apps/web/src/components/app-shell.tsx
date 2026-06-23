@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Activity, BarChart3, ClipboardList, CreditCard, Dumbbell, LogOut, Menu, PanelLeftClose, Users, X } from "lucide-react";
+import { Activity, BarChart3, ClipboardList, CreditCard, Dumbbell, LogOut, Menu, PanelLeftClose, Settings, Users, X } from "lucide-react";
 import { clearSession, getStoredUser, type SessionUser } from "@/lib/api";
 
 const links = [
@@ -12,7 +12,8 @@ const links = [
   { href: "/plans", label: "Planos", icon: Dumbbell },
   { href: "/invoices", label: "Mensalidades", icon: CreditCard },
   { href: "/assessments", label: "Avaliacoes", icon: Activity },
-  { href: "/workouts", label: "Treinos", icon: ClipboardList }
+  { href: "/workouts", label: "Treinos", icon: ClipboardList },
+  { href: "/settings", label: "Configuracoes", icon: Settings }
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

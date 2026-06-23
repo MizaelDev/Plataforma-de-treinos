@@ -63,6 +63,18 @@ export const invoiceSchema = z.object({
   status: z.enum(invoiceStatuses).default("PENDENTE")
 });
 
+export const financialSettingsSchema = z.object({
+  fixedFinePercentage: brNumber(
+    z.number({ required_error: "Informe a multa fixa.", invalid_type_error: "Informe a multa fixa." }).min(0, "Multa nao pode ser negativa.").max(100, "Multa maxima: 100%.")
+  ),
+  dailyInterestPercentage: brNumber(
+    z.number({ required_error: "Informe o juros ao dia.", invalid_type_error: "Informe o juros ao dia." }).min(0, "Juros ao dia nao pode ser negativo.").max(100, "Juros ao dia maximo: 100%.")
+  ),
+  monthlyInterestPercentage: brNumber(
+    z.number({ required_error: "Informe o juros ao mes.", invalid_type_error: "Informe o juros ao mes." }).min(0, "Juros ao mes nao pode ser negativo.").max(100, "Juros ao mes maximo: 100%.")
+  )
+});
+
 export const assessmentSchema = z.object({
   studentId: z.string().uuid("Selecione um aluno."),
   professorId: z.string().uuid().optional().or(z.literal("")),
@@ -107,5 +119,6 @@ export const workoutSchema = z.object({
 export type StudentInput = z.infer<typeof studentSchema>;
 export type PlanInput = z.infer<typeof planSchema>;
 export type InvoiceInput = z.infer<typeof invoiceSchema>;
+export type FinancialSettingsInput = z.infer<typeof financialSettingsSchema>;
 export type AssessmentInput = z.infer<typeof assessmentSchema>;
 export type WorkoutInput = z.infer<typeof workoutSchema>;

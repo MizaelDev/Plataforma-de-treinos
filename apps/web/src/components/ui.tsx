@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Loader2, SearchX } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Loader2, SearchX, X } from "lucide-react";
 
 export const fieldClass =
   "mt-1.5 h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-teal-100 disabled:cursor-not-allowed disabled:bg-gray-50";
@@ -72,4 +72,93 @@ export function StatusBadge({ status }: { status: string }) {
         : "bg-amber-50 text-amber-700 ring-amber-200";
 
   return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ring-1 ${tone}`}>{status}</span>;
+}
+
+export function TableToolbar({
+  search,
+  onSearchChange,
+  searchPlaceholder = "Buscar...",
+  children
+}: {
+  search: string;
+  onSearchChange: (value: string) => void;
+  searchPlaceholder?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-b border-gray-200 bg-white p-4 md:flex-row md:items-end md:justify-between">
+      <label className="w-full text-sm font-medium text-gray-700 md:max-w-sm">
+        Busca
+        <input className={fieldClass} value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder={searchPlaceholder} />
+      </label>
+      {children ? <div className="flex flex-wrap gap-3">{children}</div> : null}
+    </div>
+  );
+}
+
+export function Pagination({
+  page,
+  totalPages,
+  totalItems,
+  onPageChange
+}: {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+      <span>{totalItems} registro{totalItems === 1 ? "" : "s"}</span>
+      <div className="flex items-center gap-2">
+        <Button type="button" variant="secondary" className="h-8 px-2" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="min-w-20 text-center font-medium text-gray-700">
+          {page} / {totalPages}
+        </span>
+        <Button type="button" variant="secondary" className="h-8 px-2" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function ConfirmModal({
+  open,
+  title,
+  description,
+  confirmLabel = "Confirmar",
+  onCancel,
+  onConfirm
+}: {
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-5 shadow-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-ink">{title}</h2>
+            <p className="mt-1 text-sm text-muted">{description}</p>
+          </div>
+          <button type="button" aria-label="Fechar" className="rounded-md p-1 text-gray-500 hover:bg-gray-50" onClick={onCancel}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>
+          <Button type="button" variant="danger" onClick={onConfirm}>{confirmLabel}</Button>
+        </div>
+      </div>
+    </div>
+  );
 }
