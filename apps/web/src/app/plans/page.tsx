@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatCurrency, normalizeMoneyInput } from "@/lib/format";
+import { defaultPlanAccessForModality, planModalities } from "@academia/shared";
 
 type Plan = {
   id: string;
@@ -25,19 +26,24 @@ type Plan = {
   modality: string;
   durationDays: number;
   dueDay: number;
+  allowAssessments: boolean;
+  allowWorkouts: boolean;
   isActive: boolean;
 };
 
 const pageSize = 8;
-const modalityOptions = ["LUTA", "MUSCULAÇÃO"];
-const initialPlanForm = () => ({ name: "", value: "", modality: "", durationDays: "30", dueDay: "10", isActive: true });
+const initialPlanForm = () => ({ name: "", value: "", modality: "", durationDays: "30", dueDay: "10", allowAssessments: false, allowWorkouts: false, isActive: true });
 const planFields: Array<{ name: "name" | "value" | "modality" | "durationDays" | "dueDay"; label: string }> = [
   { name: "name", label: "Nome" },
   { name: "value", label: "Valor" },
-  { name: "modality", label: "Modalidade" },
-  { name: "durationDays", label: "Duracao" },
+  { name: "modality", label: "Tipo" },
+  { name: "durationDays", label: "Duração" },
   { name: "dueDay", label: "Vencimento" }
 ];
+
+function planAccessLabels(plan: Pick<Plan, "allowAssessments" | "allowWorkouts">) {
+  return ["Pagamentos", plan.allowAssessments ? "Avaliações" : null, plan.allowWorkouts ? "Treinos" : null].filter(Boolean) as string[];
+}
 
 export default function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -108,6 +114,8 @@ export default function PlansPage() {
       modality: plan.modality,
       durationDays: String(plan.durationDays),
       dueDay: String(plan.dueDay),
+      allowAssessments: plan.allowAssessments,
+      allowWorkouts: plan.allowWorkouts,
       isActive: plan.isActive
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -136,7 +144,7 @@ export default function PlansPage() {
       <header className="mb-6">
         <p className="text-sm font-semibold text-brand">Comercial</p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">Planos</h1>
-        <p className="mt-1 text-sm text-muted">Planos por modalidade, valor, duracao e dia de vencimento.</p>
+        <p className="mt-1 text-sm text-muted">Planos por tipo, valor, duração, vencimento e acessos liberados.</p>
       </header>
 
       {error && <Alert type="error" message={error} />}
@@ -148,9 +156,17 @@ export default function PlansPage() {
             <label key={name} className="text-sm font-medium text-gray-700">
               {label}
               {name === "modality" ? (
-                <select className={fieldClass} value={form.modality} onChange={(event) => setForm((current) => ({ ...current, modality: event.target.value }))}>
+                <select
+                  className={fieldClass}
+                  value={form.modality}
+                  onChange={(event) => {
+                    const modality = event.target.value;
+                    const access = modality ? defaultPlanAccessForModality(modality) : { allowAssessments: false, allowWorkouts: false };
+                    setForm((current) => ({ ...current, modality, ...access }));
+                  }}
+                >
                   <option value="">Selecione</option>
-                  {modalityOptions.map((option) => (
+                  {planModalities.map((option) => (
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>
@@ -173,6 +189,39 @@ export default function PlansPage() {
               <option value="INATIVO">Inativo</option>
             </select>
           </label>
+          <div className="rounded-md border border-gray-200 bg-gray-50 p-3 md:col-span-2 xl:col-span-5">
+            <p className="text-sm font-semibold text-ink">Acessos do plano</p>
+            <p className="mt-1 text-xs text-muted">Financeiro fica sempre disponível. Avaliações e treinos dependem do plano contratado.</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <label className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked
+                  disabled
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                Pagamentos
+              </label>
+              <label className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={form.allowAssessments}
+                  onChange={(event) => setForm((current) => ({ ...current, allowAssessments: event.target.checked }))}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                Avaliações
+              </label>
+              <label className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={form.allowWorkouts}
+                  onChange={(event) => setForm((current) => ({ ...current, allowWorkouts: event.target.checked }))}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                Treinos
+              </label>
+            </div>
+          </div>
           <div className="flex gap-2 md:col-span-2 xl:col-span-5">
             <Button type="submit" disabled={saving}>{saving ? "Salvando..." : editingId ? "Atualizar plano" : "Criar plano"}</Button>
             <Button type="button" variant="secondary" onClick={resetForm}>Cancelar</Button>
@@ -186,7 +235,7 @@ export default function PlansPage() {
         <EmptyState title="Nenhum plano cadastrado" description="Crie um plano para vincular alunos e registrar mensalidades." />
       ) : (
         <SectionCard className="overflow-hidden">
-          <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Buscar por plano, modalidade ou valor">
+          <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Buscar por plano, tipo ou valor">
             <label className="w-full text-sm font-medium text-gray-700 sm:w-44">
               Status
               <select className={fieldClass} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
@@ -215,8 +264,11 @@ export default function PlansPage() {
                     </div>
                     <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
                       <div><p className="text-xs text-muted">Valor</p><p className="font-semibold text-ink">{formatCurrency(plan.value)}</p></div>
-                      <div><p className="text-xs text-muted">Duracao</p><p className="font-medium text-ink">{plan.durationDays} dias</p></div>
+                      <div><p className="text-xs text-muted">Duração</p><p className="font-medium text-ink">{plan.durationDays} dias</p></div>
                       <div><p className="text-xs text-muted">Vencimento</p><p className="font-medium text-ink">Dia {plan.dueDay}</p></div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {planAccessLabels(plan).map((label) => <StatusBadge key={label} status={label} />)}
                     </div>
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
                       <Button type="button" variant="secondary" onClick={() => editPlan(plan)}>Editar</Button>
@@ -227,16 +279,17 @@ export default function PlansPage() {
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[860px] text-left text-sm">
+                <table className="w-full min-w-[980px] text-left text-sm">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-4 py-3">Plano</th>
                       <th className="px-4 py-3">Valor</th>
-                      <th className="px-4 py-3">Modalidade</th>
-                      <th className="px-4 py-3">Duracao</th>
+                      <th className="px-4 py-3">Tipo</th>
+                      <th className="px-4 py-3">Duração</th>
                       <th className="px-4 py-3">Vencimento</th>
+                      <th className="px-4 py-3">Acessos</th>
                       <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Acao</th>
+                      <th className="px-4 py-3">Ação</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -247,6 +300,11 @@ export default function PlansPage() {
                         <td className="px-4 py-3 text-gray-600">{plan.modality}</td>
                         <td className="px-4 py-3 text-gray-600">{plan.durationDays} dias</td>
                         <td className="px-4 py-3 text-gray-600">Dia {plan.dueDay}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {planAccessLabels(plan).map((label) => <StatusBadge key={label} status={label} />)}
+                          </div>
+                        </td>
                         <td className="px-4 py-3"><StatusBadge status={plan.isActive ? "ATIVO" : "INATIVO"} /></td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
@@ -274,7 +332,7 @@ export default function PlansPage() {
       <ConfirmModal
         open={!!planToDelete}
         title="Inativar plano"
-        description={`O plano ${planToDelete?.name ?? ""} ficara indisponivel para novos vinculos.`}
+        description={`O plano ${planToDelete?.name ?? ""} ficara indisponível para novos vinculos.`}
         confirmLabel="Inativar"
         onCancel={() => setPlanToDelete(null)}
         onConfirm={() => planToDelete && inactivatePlan(planToDelete)}

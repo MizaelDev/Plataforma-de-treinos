@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
   Alert,
@@ -14,11 +14,9 @@ import {
   SectionCard,
   StatusBadge,
   TableToolbar,
-  fieldClass,
-  textareaClass
+  fieldClass
 } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatCpf, formatPhone } from "@/lib/format";
 
 type Student = {
   id: string;
@@ -37,31 +35,12 @@ type Student = {
 };
 
 const pageSize = 8;
-const modalityOptions = ["LUTA", "MUSCULAÇÃO"];
-
-const initialStudentForm = () => ({
-  fullName: "",
-  cpf: "",
-  birthDate: "",
-  phone: "",
-  address: "",
-  email: "",
-  photoUrl: "",
-  enrollmentDate: new Date().toISOString().slice(0, 10),
-  modality: "",
-  notes: "",
-  status: "ATIVO",
-  createAccess: false
-});
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(initialStudentForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [page, setPage] = useState(1);
@@ -96,62 +75,6 @@ export default function StudentsPage() {
     setPage(1);
   }, [search, statusFilter]);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setSuccess("");
-    setSaving(true);
-    try {
-      const payload = await api<{ access?: { email: string; temporaryPassword: string } | null }>(
-        editingId ? `/students/${editingId}` : "/students",
-        {
-          method: editingId ? "PATCH" : "POST",
-          body: JSON.stringify(editingId ? { ...form, createAccess: undefined } : form)
-        }
-      );
-      setForm(initialStudentForm());
-      setEditingId(null);
-      await load();
-      if (editingId) {
-        setSuccess("Aluno atualizado com sucesso.");
-      } else {
-        setSuccess(
-          payload.access
-            ? `Aluno cadastrado com sucesso. Acesso criado: ${payload.access.email} / senha temporaria ${payload.access.temporaryPassword}.`
-            : "Aluno cadastrado com sucesso."
-        );
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro inesperado.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function editStudent(student: Student) {
-    setEditingId(student.id);
-    setForm({
-      fullName: student.fullName,
-      cpf: formatCpf(student.cpf),
-      birthDate: student.birthDate.slice(0, 10),
-      phone: formatPhone(student.phone),
-      address: student.address,
-      email: student.email,
-      photoUrl: student.photoUrl ?? "",
-      enrollmentDate: student.enrollmentDate.slice(0, 10),
-      modality: student.modality,
-      notes: student.notes ?? "",
-      status: student.status,
-      createAccess: false
-    });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function resetForm() {
-    setForm(initialStudentForm());
-    setEditingId(null);
-  }
-
   async function inactivateStudent(student: Student) {
     setError("");
     setSuccess("");
@@ -168,83 +91,29 @@ export default function StudentsPage() {
   return (
     <AppShell>
       <header className="mb-6">
-        <p className="text-sm font-semibold text-brand">Cadastros</p>
-        <h1 className="mt-1 text-2xl font-semibold text-ink">Alunos</h1>
-        <p className="mt-1 text-sm text-muted">Cadastro com dados pessoais, matricula, modalidade e acesso do aluno.</p>
+        <p className="text-sm font-semibold text-brand">Consulta</p>
+        <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-ink">Alunos</h1>
+            <p className="mt-1 text-sm text-muted">Local para consultar dados, perfil, planos, mensalidades e histórico dos alunos.</p>
+          </div>
+          <Link href="/enrollments" className="inline-flex h-10 items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-semibold text-white transition hover:bg-gray-800">
+            Nova matrícula
+          </Link>
+        </div>
       </header>
 
       {error && <Alert type="error" message={error} />}
       {success && <Alert type="success" message={success} />}
 
-      <SectionCard className="mb-6 p-4">
-        <form onSubmit={submit} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {[
-            ["fullName", "Nome completo"],
-            ["cpf", "CPF"],
-            ["phone", "Telefone"],
-            ["address", "Endereco"],
-            ["email", "E-mail"],
-            ["photoUrl", "Foto URL"],
-            ["birthDate", "Nascimento"],
-            ["enrollmentDate", "Matricula"]
-          ].map(([name, label]) => (
-            <label key={name} className="text-sm font-medium text-gray-700">
-              {label}
-              <input
-                className={fieldClass}
-                type={name.includes("Date") ? "date" : "text"}
-                value={String((form as Record<string, unknown>)[name] ?? "")}
-                onChange={(event) => {
-                  const value = name === "cpf" ? formatCpf(event.target.value) : name === "phone" ? formatPhone(event.target.value) : event.target.value;
-                  setForm((current) => ({ ...current, [name]: value }));
-                }}
-              />
-            </label>
-          ))}
-          <label className="text-sm font-medium text-gray-700">
-            Modalidade
-            <select className={fieldClass} value={form.modality} onChange={(event) => setForm((current) => ({ ...current, modality: event.target.value }))}>
-              <option value="">Selecione</option>
-              {modalityOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm font-medium text-gray-700">
-            Status
-            <select className={fieldClass} value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}>
-              <option value="ATIVO">Ativo</option>
-              <option value="INATIVO">Inativo</option>
-            </select>
-          </label>
-          <label className="text-sm font-medium text-gray-700 md:col-span-2 xl:col-span-3">
-            Observacoes
-            <textarea className={textareaClass} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
-          </label>
-          <label className="flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 md:col-span-2 xl:col-span-3">
-            <input
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-brand"
-              type="checkbox"
-              checked={form.createAccess}
-              disabled={!!editingId}
-              onChange={(event) => setForm((current) => ({ ...current, createAccess: event.target.checked }))}
-            />
-            <span>
-              <span className="block font-semibold text-ink">Criar acesso do aluno</span>
-              <span className="block text-muted">{editingId ? "Use o perfil do aluno para criar ou redefinir acesso." : "Cria um usuario ALUNO usando o e-mail informado e uma senha temporaria."}</span>
-            </span>
-          </label>
-          <div className="flex gap-2 md:col-span-2 xl:col-span-3">
-            <Button type="submit" disabled={saving}>{saving ? "Salvando..." : editingId ? "Atualizar aluno" : "Cadastrar aluno"}</Button>
-            <Button type="button" variant="secondary" onClick={resetForm}>Cancelar</Button>
-          </div>
-        </form>
-      </SectionCard>
-
       {loading ? (
         <LoadingState />
       ) : students.length === 0 ? (
-        <EmptyState title="Nenhum aluno cadastrado" description="Cadastre o primeiro aluno para começar a controlar planos e mensalidades." />
+        <EmptyState
+          title="Nenhum aluno cadastrado"
+          description="Use Nova Matrícula para cadastrar o primeiro aluno com plano e mensalidade inicial."
+          action={<Link href="/enrollments" className="inline-flex h-10 items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-semibold text-white">Nova matrícula</Link>}
+        />
       ) : (
         <SectionCard className="overflow-hidden">
           <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Buscar por nome, e-mail, telefone ou modalidade">
@@ -278,11 +147,10 @@ export default function StudentsPage() {
                       <div><p className="text-xs text-muted">Telefone</p><p className="font-medium text-ink">{student.phone}</p></div>
                       <div><p className="text-xs text-muted">Modalidade</p><p className="font-medium text-ink">{student.modality}</p></div>
                     </div>
-                    <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
                       <Link href={`/students/${student.id}`} className="inline-flex h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">
-                        Ver perfil
+                        Ver detalhes
                       </Link>
-                      <Button type="button" variant="secondary" onClick={() => editStudent(student)}>Editar</Button>
                       {student.status === "ATIVO" && <Button type="button" variant="danger" onClick={() => setStudentToDelete(student)}>Inativar</Button>}
                     </div>
                   </MobileRecordCard>
@@ -298,7 +166,7 @@ export default function StudentsPage() {
                       <th className="px-4 py-3">Telefone</th>
                       <th className="px-4 py-3">Modalidade</th>
                       <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Acao</th>
+                      <th className="px-4 py-3">Ação</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -316,11 +184,8 @@ export default function StudentsPage() {
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
                             <Link href={`/students/${student.id}`} className="inline-flex h-8 items-center rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">
-                              Ver perfil
+                              Ver detalhes
                             </Link>
-                            <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => editStudent(student)}>
-                              Editar
-                            </Button>
                             {student.status === "ATIVO" && (
                               <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setStudentToDelete(student)}>
                                 Inativar
@@ -342,7 +207,7 @@ export default function StudentsPage() {
       <ConfirmModal
         open={!!studentToDelete}
         title="Inativar aluno"
-        description={`O aluno ${studentToDelete?.fullName ?? ""} sera marcado como inativo e o acesso dele sera bloqueado.`}
+        description={`O aluno ${studentToDelete?.fullName ?? ""} será marcado como inativo e o acesso dele será bloqueado.`}
         confirmLabel="Inativar"
         onCancel={() => setStudentToDelete(null)}
         onConfirm={() => studentToDelete && inactivateStudent(studentToDelete)}

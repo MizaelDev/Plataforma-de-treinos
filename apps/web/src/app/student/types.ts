@@ -13,6 +13,8 @@ export type PlanSummary = {
   value: string;
   modality: string;
   dueDay?: number;
+  allowAssessments?: boolean;
+  allowWorkouts?: boolean;
 };
 
 export type InvoiceSummary = {
@@ -29,11 +31,28 @@ export type InvoiceSummary = {
     interestAmount: string;
     overdueDays: number;
   };
+  paymentTransactions?: PaymentTransactionSummary[];
+};
+
+export type PaymentTransactionSummary = {
+  id: string;
+  provider: "MERCADO_PAGO" | "ASAAS" | "EFI";
+  providerPaymentId?: string | null;
+  status: "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "FAILED";
+  amount: string;
+  qrCode?: string | null;
+  qrCodeBase64?: string | null;
+  copyPasteCode?: string | null;
+  expiresAt?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
 };
 
 export type AssessmentSummary = {
   id: string;
   assessedAt: string;
+  startDate?: string | null;
+  trainingGoals?: string[];
   weightKg: string;
   heightCm: string;
   bmi: string;
@@ -52,12 +71,19 @@ export type AssessmentSummary = {
   rightCalfCircumferenceCm?: string | null;
   waistCircumferenceCm?: string | null;
   hipCircumferenceCm?: string | null;
+  bioimpedance?: Record<string, string | number | null> | null;
+  anthropometry?: Record<string, string | number | null> | null;
+  anthropometryMeasuredAt?: string | null;
+  skinfolds?: Record<string, string | number | null> | null;
+  skinfoldsMeasuredAt?: string | null;
+  physicalTests?: Record<string, string | number | null> | null;
   notes?: string | null;
   professor?: { id: string; name: string } | null;
 };
 
 export type ExerciseSummary = {
   id?: string;
+  libraryExerciseId?: string | null;
   name: string;
   sets: number | string;
   repetitions: string;
@@ -65,6 +91,20 @@ export type ExerciseSummary = {
   restSeconds?: number | string | null;
   notes?: string | null;
   order: number | string;
+  libraryExercise?: {
+    id: string;
+    name: string;
+    modality?: string | null;
+    category?: string | null;
+    muscleGroup?: string | null;
+    difficultyLevel?: string | null;
+    description?: string | null;
+    executionInstructions?: string | null;
+    commonMistakes?: string | null;
+    mediaType: "IMAGE" | "GIF" | "VIDEO" | "EXTERNAL_URL";
+    mediaUrl: string;
+    thumbnailUrl?: string | null;
+  } | null;
 };
 
 export type WorkoutSummary = {

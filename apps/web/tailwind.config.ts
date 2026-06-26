@@ -5,10 +5,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#141414",
-        muted: "#6b7280",
-        line: "#e5e7eb",
-        brand: "#0f766e",
+        ink: "#17120f",
+        muted: "#746b63",
+        line: "#ded7cf",
+        brand: "#d86f21",
+        brandDark: "#a94b12",
+        ember: "#f59e0b",
+        coal: "#14110f",
         danger: "#b91c1c"
       }
     }

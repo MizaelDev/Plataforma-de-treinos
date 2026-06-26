@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -77,7 +77,7 @@ export default function SettingsPage() {
         dailyInterestPercentage: decimalToInput(payload.settings.dailyInterestPercentage),
         monthlyInterestPercentage: decimalToInput(payload.settings.monthlyInterestPercentage)
       });
-      setSuccess("Configuracoes financeiras salvas com sucesso.");
+      setSuccess("Configurações financeiras salvas com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
@@ -88,8 +88,8 @@ export default function SettingsPage() {
   return (
     <AppShell>
       <header className="mb-6">
-        <p className="text-sm font-semibold text-brand">Administracao</p>
-        <h1 className="mt-1 text-2xl font-semibold text-ink">Configuracoes</h1>
+        <p className="text-sm font-semibold text-brand">Administração</p>
+        <h1 className="mt-1 text-2xl font-semibold text-ink">Configurações</h1>
         <p className="mt-1 text-sm text-muted">Ajustes financeiros usados no calculo de mensalidades em atraso.</p>
       </header>
 
@@ -101,7 +101,7 @@ export default function SettingsPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
           <SectionCard className="p-5">
-            <p className="text-sm font-semibold text-ink">Usuario logado</p>
+            <p className="text-sm font-semibold text-ink">Usuário logado</p>
             <div className="mt-4 space-y-3 text-sm">
               <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-3">
                 <span className="text-muted">Nome</span>
@@ -145,7 +145,7 @@ export default function SettingsPage() {
                 />
               </label>
               <label className="text-sm font-medium text-gray-700">
-                Juros ao mes (%)
+                Juros ao mês (%)
                 <input
                   className={fieldClass}
                   value={form.monthlyInterestPercentage}
@@ -153,7 +153,7 @@ export default function SettingsPage() {
                 />
               </label>
               <div className="flex gap-2 md:col-span-3">
-                <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar configuracoes"}</Button>
+                <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar configurações"}</Button>
                 <Button type="button" variant="secondary" onClick={loadFinancialSettings} disabled={saving}>Cancelar</Button>
               </div>
             </form>
@@ -163,7 +163,7 @@ export default function SettingsPage() {
             <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-ink">Auditoria recente</p>
-                <p className="mt-1 text-sm text-muted">Ultimas acoes administrativas registradas no sistema.</p>
+                <p className="mt-1 text-sm text-muted">Últimas ações administrativas registradas no sistema.</p>
               </div>
               <StatusBadge status="ATIVO" />
             </div>
@@ -176,8 +176,8 @@ export default function SettingsPage() {
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-4 py-3">Data</th>
-                      <th className="px-4 py-3">Usuario</th>
-                      <th className="px-4 py-3">Acao</th>
+                      <th className="px-4 py-3">Usuário</th>
+                      <th className="px-4 py-3">Ação</th>
                       <th className="px-4 py-3">Entidade</th>
                       <th className="px-4 py-3">ID</th>
                     </tr>

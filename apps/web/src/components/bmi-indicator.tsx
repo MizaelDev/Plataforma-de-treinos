@@ -33,7 +33,7 @@ function getBmiStatus(value?: string | number | null): { label: string; level: B
 
 const levelClasses: Record<BmiLevel, string> = {
   low: "border-sky-200 bg-sky-50 text-sky-800",
-  ok: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  ok: "border-emerald-500/40 bg-emerald-950/45 text-emerald-300",
   warning: "border-amber-200 bg-amber-50 text-amber-800",
   danger: "border-red-200 bg-red-50 text-red-800",
   neutral: "border-gray-200 bg-gray-50 text-gray-700"

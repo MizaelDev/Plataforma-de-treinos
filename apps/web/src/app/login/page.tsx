@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Dumbbell } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { Alert, Button, fieldClass } from "@/components/ui";
 import { getStoredUser, setSession } from "@/lib/api";
 import { appConfig } from "@/lib/app-config";
@@ -43,22 +43,20 @@ export default function LoginPage() {
       setSession(payload.token, payload.user);
       router.push(payload.user.role === "ALUNO" ? "/student/dashboard" : "/");
     } catch {
-      setError("Nao foi possivel conectar com a API.");
+      setError("Não foi possível conectar com a API.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f6f7f8] px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center bg-[#efeeeb] px-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-md rounded-lg border border-[#ded7cf] bg-[#fffdfa] p-6 shadow-xl shadow-stone-900/10">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-gray-900 text-white">
-            <Dumbbell className="h-5 w-5 text-teal-200" />
-          </div>
+          <BrandLogo compact />
           <div>
             <h1 className="text-xl font-semibold text-ink">{appConfig.name}</h1>
-            <p className="text-sm text-muted">Acesse sua area de gestao ou acompanhamento.</p>
+            <p className="text-sm text-muted">Acesse sua área de gestão ou acompanhamento.</p>
           </div>
         </div>
 

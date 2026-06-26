@@ -4,13 +4,15 @@
 
 :root {
   color-scheme: light;
-  background: #f6f7f8;
+  background: #efeeeb;
 }
 
 body {
   margin: 0;
-  background: #f6f7f8;
-  color: #141414;
+  background:
+    linear-gradient(180deg, rgba(216, 111, 33, 0.07), rgba(20, 17, 15, 0) 280px),
+    #efeeeb;
+  color: #17120f;
 }
 
 * {
@@ -25,6 +27,92 @@ textarea {
 }
 
 ::selection {
-  background: #ccfbf1;
-  color: #134e4a;
+  background: #f6c18c;
+  color: #17120f;
+}
+
+.app-admin-main {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(216, 111, 33, 0.18), transparent 34rem),
+    linear-gradient(180deg, #241914 0%, #1a1512 34rem, #16120f 100%);
+  color: #f8efe6;
+}
+
+.app-admin-main > header {
+  border-color: #3a2b22 !important;
+  background: rgba(25, 20, 16, 0.88) !important;
+}
+
+.app-admin-main [class*="bg-[#fffdfa]"],
+.app-admin-main .bg-white {
+  background-color: #241c17 !important;
+}
+
+.app-admin-main .bg-gray-50,
+.app-admin-main .bg-gray-100 {
+  background-color: #1b1511 !important;
+}
+
+.app-admin-main [class*="border-[#ded7cf]"],
+.app-admin-main .border-gray-100,
+.app-admin-main .border-gray-200,
+.app-admin-main .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #3b2d24 !important;
+}
+
+.app-admin-main [class*="shadow"] {
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18) !important;
+}
+
+.app-admin-main .text-ink,
+.app-admin-main .text-gray-950,
+.app-admin-main .text-gray-900,
+.app-admin-main .text-gray-800,
+.app-admin-main .text-gray-700 {
+  color: #f8efe6 !important;
+}
+
+.app-admin-main .text-muted,
+.app-admin-main .text-gray-600,
+.app-admin-main .text-gray-500 {
+  color: #c9baae !important;
+}
+
+.app-admin-main input,
+.app-admin-main select,
+.app-admin-main textarea {
+  border-color: #4b392d !important;
+  background-color: #191410 !important;
+  color: #f8efe6 !important;
+}
+
+.app-admin-main input::placeholder,
+.app-admin-main textarea::placeholder {
+  color: #8f8176 !important;
+}
+
+.app-admin-main input:focus,
+.app-admin-main select:focus,
+.app-admin-main textarea:focus {
+  border-color: #d86f21 !important;
+  box-shadow: 0 0 0 2px rgba(216, 111, 33, 0.24) !important;
+}
+
+.app-admin-main option {
+  background-color: #191410;
+  color: #f8efe6;
+}
+
+.app-admin-main input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) sepia(0.25) saturate(2) hue-rotate(350deg);
+}
+
+.app-admin-main table thead,
+.app-admin-main .bg-orange-50 {
+  background-color: #2c211a !important;
+}
+
+.app-admin-main .hover\:bg-gray-50:hover,
+.app-admin-main .hover\:bg-orange-50:hover {
+  background-color: #30241c !important;
 }

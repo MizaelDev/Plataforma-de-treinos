@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -17,7 +17,7 @@ type Invoice = {
   amount: string;
   status: string;
   totalPaid?: string;
-  plan?: { id: string; name: string } | null;
+  plan?: { id: string; name: string; value: string; modality: string } | null;
   charges?: { fineAmount: string; interestAmount: string; total: string; overdueDays: number };
 };
 
@@ -50,9 +50,9 @@ const detailAssessmentMeasurements: Array<{ key: keyof Assessment; label: string
   { key: "muscleMassKg", label: "Massa muscular", suffix: " kg" },
   { key: "chestCircumferenceCm", label: "Peitoral", suffix: " cm" },
   { key: "shoulderCircumferenceCm", label: "Ombros", suffix: " cm" },
-  { key: "gluteCircumferenceCm", label: "Gluteos", suffix: " cm" },
-  { key: "leftArmCircumferenceCm", label: "Braco esq.", suffix: " cm" },
-  { key: "rightArmCircumferenceCm", label: "Braco dir.", suffix: " cm" },
+  { key: "gluteCircumferenceCm", label: "Glúteos", suffix: " cm" },
+  { key: "leftArmCircumferenceCm", label: "Braço esq.", suffix: " cm" },
+  { key: "rightArmCircumferenceCm", label: "Braço dir.", suffix: " cm" },
   { key: "leftLegCircumferenceCm", label: "Perna esq.", suffix: " cm" },
   { key: "rightLegCircumferenceCm", label: "Perna dir.", suffix: " cm" }
 ];
@@ -132,11 +132,23 @@ export default function StudentDetailPage() {
     }
   }
 
-  const activePlan = useMemo(() => student?.studentPlans.find((item) => item.isActive)?.plan ?? student?.studentPlans[0]?.plan ?? null, [student]);
+  const activePlan = useMemo(() => {
+    if (!student) return null;
+
+    const linkedPlan = student.studentPlans.find((item) => item.isActive)?.plan ?? student.studentPlans[0]?.plan ?? null;
+    const invoicePlan =
+      student.invoices.find((invoice) => invoice.status !== "CANCELADO" && invoice.plan)?.plan ??
+      student.invoices.find((invoice) => invoice.plan)?.plan ??
+      null;
+
+    return linkedPlan ?? invoicePlan;
+  }, [student]);
   const overdueInvoices = useMemo(
     () => student?.invoices.filter((invoice) => invoice.status !== "PAGO" && invoice.status !== "CANCELADO" && (invoice.charges?.overdueDays ?? 0) > 0) ?? [],
     [student]
   );
+  const latestAssessment = student?.assessments[0] ?? null;
+  const previousAssessment = student?.assessments[1] ?? null;
 
   return (
     <AppShell>
@@ -146,7 +158,7 @@ export default function StudentDetailPage() {
       {loading ? (
         <LoadingState />
       ) : !student ? (
-        <EmptyState title="Aluno nao encontrado" description="O aluno solicitado nao existe ou nao esta disponivel." />
+        <EmptyState title="Aluno não encontrado" description="O aluno solicitado não existe ou não esta disponível." />
       ) : (
         <>
           <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -161,12 +173,12 @@ export default function StudentDetailPage() {
               <div>
                 <p className="text-sm font-semibold text-brand">Perfil do aluno</p>
                 <h1 className="mt-1 text-2xl font-semibold text-ink">{student.fullName}</h1>
-                <p className="mt-1 text-sm text-muted">{student.modality} - matricula {formatDate(student.enrollmentDate)}</p>
+                <p className="mt-1 text-sm text-muted">{student.modality} - matrícula {formatDate(student.enrollmentDate)}</p>
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
               <QuickAction href="/invoices" label="Criar mensalidade" icon={CreditCard} />
-              <QuickAction href="/assessments" label="Registrar avaliacao" icon={Activity} />
+              <QuickAction href={`/assessments?studentId=${student.id}`} label="Registrar avaliação" icon={Activity} />
               <QuickAction href="/workouts" label="Criar treino" icon={Dumbbell} />
             </div>
           </header>
@@ -182,7 +194,7 @@ export default function StudentDetailPage() {
                 <div><p className="text-muted">Nascimento</p><p className="font-medium text-ink">{formatDate(student.birthDate)}</p></div>
                 <div><p className="text-muted">Telefone</p><p className="font-medium text-ink">{formatPhone(student.phone)}</p></div>
                 <div><p className="text-muted">E-mail</p><p className="font-medium text-ink">{student.email}</p></div>
-                <div className="sm:col-span-2"><p className="text-muted">Endereco</p><p className="font-medium text-ink">{student.address}</p></div>
+                <div className="sm:col-span-2"><p className="text-muted">Endereço</p><p className="font-medium text-ink">{student.address}</p></div>
               </div>
               {student.notes && <div className="mt-4 rounded-md bg-gray-50 p-3 text-sm text-gray-700">{student.notes}</div>}
             </SectionCard>
@@ -192,7 +204,7 @@ export default function StudentDetailPage() {
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Plano atual</p><p className="font-semibold text-ink">{activePlan?.name ?? "Sem plano"}</p></div>
                 <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Valor do plano</p><p className="font-semibold text-ink">{activePlan ? formatCurrency(activePlan.value) : "-"}</p></div>
-                <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Situacao</p><p className="font-semibold text-ink">{overdueInvoices.length > 0 ? "Inadimplente" : "Em dia"}</p></div>
+                <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Situação</p><p className="font-semibold text-ink">{overdueInvoices.length > 0 ? "Inadimplente" : "Em dia"}</p></div>
               </div>
             </SectionCard>
           </section>
@@ -202,7 +214,7 @@ export default function StudentDetailPage() {
               <div>
                 <p className="text-sm font-semibold text-ink">Acesso do aluno</p>
                 <p className="mt-1 text-sm text-muted">
-                  {student.user ? `Usuario vinculado: ${student.user.email}` : "Este aluno ainda nao possui usuario de acesso."}
+                  {student.user ? `Usuário vinculado: ${student.user.email}` : "Este aluno ainda não possui usuário de acesso."}
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -214,9 +226,45 @@ export default function StudentDetailPage() {
             </div>
           </SectionCard>
 
+          <SectionCard className="mt-5 p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-ink">Evolução física</p>
+                <p className="mt-1 text-sm text-muted">Resumo da última avaliação e variação em relação a anterior.</p>
+              </div>
+              <QuickAction href={`/assessments?studentId=${student.id}`} label="Nova avaliação" icon={Activity} />
+            </div>
+            {!latestAssessment ? (
+              <div className="mt-4">
+                <EmptyState title="Sem avaliação física" description="Registre a primeira avaliação para acompanhar peso, IMC, gordura e massa muscular." />
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-md bg-gray-50 p-3">
+                  <p className="text-xs text-muted">Peso atual</p>
+                  <p className="font-semibold text-ink">{formatDecimal(latestAssessment.weightKg, " kg")}</p>
+                  {previousAssessment && <p className="mt-1 text-xs text-muted">Var.: {(Number(latestAssessment.weightKg) - Number(previousAssessment.weightKg)).toFixed(2).replace(".", ",")} kg</p>}
+                </div>
+                <div className="rounded-md bg-gray-50 p-3">
+                  <p className="text-xs text-muted">IMC</p>
+                  <div className="mt-1"><BmiIndicator value={latestAssessment.bmi} compact /></div>
+                  {previousAssessment && <p className="mt-1 text-xs text-muted">Var.: {(Number(latestAssessment.bmi) - Number(previousAssessment.bmi)).toFixed(2).replace(".", ",")}</p>}
+                </div>
+                <div className="rounded-md bg-gray-50 p-3">
+                  <p className="text-xs text-muted">Gordura corporal</p>
+                  <p className="font-semibold text-ink">{formatDecimal(latestAssessment.bodyFatPercentage, "%")}</p>
+                </div>
+                <div className="rounded-md bg-gray-50 p-3">
+                  <p className="text-xs text-muted">Massa muscular</p>
+                  <p className="font-semibold text-ink">{formatDecimal(latestAssessment.muscleMassKg, " kg")}</p>
+                </div>
+              </div>
+            )}
+          </SectionCard>
+
           <section className="mt-5 grid gap-4 xl:grid-cols-2">
             <SectionCard className="overflow-hidden">
-              <div className="border-b border-gray-200 px-4 py-3"><p className="text-sm font-semibold text-ink">Historico de mensalidades</p></div>
+              <div className="border-b border-gray-200 px-4 py-3"><p className="text-sm font-semibold text-ink">Histórico de mensalidades</p></div>
               {student.invoices.length === 0 ? <div className="p-4"><EmptyState title="Sem mensalidades" description="Nenhuma mensalidade registrada para este aluno." /></div> : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[720px] text-left text-sm">
@@ -238,8 +286,8 @@ export default function StudentDetailPage() {
             </SectionCard>
 
             <SectionCard className="overflow-hidden">
-              <div className="border-b border-gray-200 px-4 py-3"><p className="text-sm font-semibold text-ink">Avaliacoes fisicas</p></div>
-              {student.assessments.length === 0 ? <div className="p-4"><EmptyState title="Sem avaliacoes" description="Nenhuma avaliacao registrada para este aluno." /></div> : (
+              <div className="border-b border-gray-200 px-4 py-3"><p className="text-sm font-semibold text-ink">Avaliações físicas</p></div>
+              {student.assessments.length === 0 ? <div className="p-4"><EmptyState title="Sem avaliações" description="Nenhuma avaliação registrada para este aluno." /></div> : (
                 <div className="divide-y divide-gray-100">
                   {student.assessments.slice(0, 5).map((assessment) => (
                     <div key={assessment.id} className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-4">

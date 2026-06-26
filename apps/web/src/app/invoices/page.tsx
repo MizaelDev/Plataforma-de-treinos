@@ -30,11 +30,28 @@ type Invoice = {
   totalPaid?: string | number;
   status: "PAGO" | "PENDENTE" | "ATRASADO" | "CANCELADO";
   charges?: { total: string; fineAmount: string; interestAmount: string; overdueDays: number };
+  paymentTransactions?: PaymentTransaction[];
+};
+
+type PaymentTransaction = {
+  id: string;
+  provider: "MERCADO_PAGO" | "ASAAS" | "EFI";
+  status: "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "FAILED";
+  amount: string;
+  paidAt?: string | null;
+  createdAt: string;
 };
 
 const pageSize = 8;
 const today = () => new Date().toISOString().slice(0, 10);
 const initialInvoiceForm = () => ({ studentId: "", planId: "", dueDate: today(), amount: "", status: "PENDENTE" });
+const paymentStatusLabel: Record<PaymentTransaction["status"], string> = {
+  PENDING: "Aguardando Pix",
+  PAID: "Pago via Pix",
+  EXPIRED: "Pix expirado",
+  CANCELLED: "Pix cancelado",
+  FAILED: "Pix falhou"
+};
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -51,6 +68,9 @@ export default function InvoicesPage() {
   const [studentFilter, setStudentFilter] = useState("TODOS");
   const [page, setPage] = useState(1);
   const [invoiceToCancel, setInvoiceToCancel] = useState<Invoice | null>(null);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [recentlyPaidId, setRecentlyPaidId] = useState<string | null>(null);
 
   async function load() {
     const [invoicePayload, studentPayload, planPayload] = await Promise.all([
@@ -71,7 +91,7 @@ export default function InvoicesPage() {
 
   const filteredInvoices = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return invoices.filter((invoice) => {
+    const filtered = invoices.filter((invoice) => {
       const matchesSearch = [invoice.student.fullName, invoice.plan?.name ?? "", invoice.status].some((value) =>
         value.toLowerCase().includes(term)
       );
@@ -79,7 +99,17 @@ export default function InvoicesPage() {
       const matchesStudent = studentFilter === "TODOS" || invoice.student.id === studentFilter;
       return matchesSearch && matchesStatus && matchesStudent;
     });
-  }, [invoices, search, statusFilter, studentFilter]);
+
+    if (!recentlyPaidId || statusFilter !== "TODOS") {
+      return filtered;
+    }
+
+    return [...filtered].sort((a, b) => {
+      if (a.id === recentlyPaidId) return -1;
+      if (b.id === recentlyPaidId) return 1;
+      return 0;
+    });
+  }, [invoices, recentlyPaidId, search, statusFilter, studentFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / pageSize));
   const visibleInvoices = filteredInvoices.slice((page - 1) * pageSize, page * pageSize);
@@ -130,13 +160,28 @@ export default function InvoicesPage() {
     setError("");
     setSuccess("");
     try {
-      const payload = await api<{ nextInvoice?: { dueDate: string } | null }>(`/invoices/${id}/pay`, { method: "POST" });
+      setPayingId(id);
+      const payload = await api<{ invoice: { id: string } }>(`/invoices/${id}/pay`, { method: "POST" });
       await load();
-      setSuccess(
-        payload.nextInvoice
-          ? `Pagamento registrado com sucesso. Proxima mensalidade criada para ${formatDate(payload.nextInvoice.dueDate)}.`
-          : "Pagamento registrado com sucesso."
-      );
+      setRecentlyPaidId(payload.invoice.id);
+      setStatusFilter("TODOS");
+      setPage(1);
+      setSuccess("Pagamento registrado como pago.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado.");
+    } finally {
+      setPayingId(null);
+    }
+  }
+
+  async function deleteInvoice(invoice: Invoice) {
+    setError("");
+    setSuccess("");
+    try {
+      await api(`/invoices/${invoice.id}/permanent`, { method: "DELETE" });
+      setInvoiceToDelete(null);
+      await load();
+      setSuccess("Mensalidade excluída com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     }
@@ -160,7 +205,7 @@ export default function InvoicesPage() {
       <header className="mb-6">
         <p className="text-sm font-semibold text-brand">Financeiro</p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">Mensalidades</h1>
-        <p className="mt-1 text-sm text-muted">Registro de cobrancas, vencimentos, pagamentos, multa e juros.</p>
+        <p className="mt-1 text-sm text-muted">Registro de cobranças, vencimentos, pagamentos, multa e juros.</p>
       </header>
 
       {error && <Alert type="error" message={error} />}
@@ -251,32 +296,39 @@ export default function InvoicesPage() {
           ) : (
             <>
               <div className="grid gap-3 p-4 md:hidden">
-                {visibleInvoices.map((invoice) => (
-                  <MobileRecordCard key={invoice.id}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-ink">{invoice.student.fullName}</p>
-                        <p className="mt-1 text-sm text-muted">{invoice.plan?.name ?? "Mensalidade"}</p>
-                      </div>
-                      <StatusBadge status={invoice.status} />
-                    </div>
-                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                      <div><p className="text-xs text-muted">Vencimento</p><p className="font-medium text-ink">{formatDate(invoice.dueDate)}</p></div>
-                      <div><p className="text-xs text-muted">Pagamento</p><p className="font-medium text-ink">{formatDate(invoice.paidAt)}</p></div>
-                      <div><p className="text-xs text-muted">Original</p><p className="font-medium text-ink">{formatCurrency(invoice.amount)}</p></div>
-                      <div><p className="text-xs text-muted">Atualizado</p><p className="font-semibold text-ink">{formatCurrency(invoiceDisplayAmount(invoice))}</p></div>
-                    </div>
-                    <div className="mt-4 grid gap-2">
-                      <Button type="button" variant="secondary" onClick={() => editInvoice(invoice)}>Editar</Button>
-                      {invoice.status !== "PAGO" && invoice.status !== "CANCELADO" && (
-                        <Button type="button" variant="secondary" onClick={() => pay(invoice.id)}>Marcar pago</Button>
-                      )}
-                      {invoice.status !== "CANCELADO" && (
-                        <Button type="button" variant="danger" onClick={() => setInvoiceToCancel(invoice)}>Cancelar</Button>
-                      )}
-                    </div>
-                  </MobileRecordCard>
-                ))}
+                {visibleInvoices.map((invoice) => {
+                  const latestPayment = invoice.paymentTransactions?.[0];
+                  return (
+                    <MobileRecordCard key={invoice.id}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-ink">{invoice.student.fullName}</p>
+                            <p className="mt-1 text-sm text-muted">{invoice.plan?.name ?? "Mensalidade"}</p>
+                          </div>
+                          <StatusBadge status={invoice.status} />
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                          <div><p className="text-xs text-muted">Vencimento</p><p className="font-medium text-ink">{formatDate(invoice.dueDate)}</p></div>
+                          <div><p className="text-xs text-muted">Pagamento</p><p className="font-medium text-ink">{formatDate(invoice.paidAt)}</p></div>
+                          <div><p className="text-xs text-muted">Original</p><p className="font-medium text-ink">{formatCurrency(invoice.amount)}</p></div>
+                          <div><p className="text-xs text-muted">Atualizado</p><p className="font-semibold text-ink">{formatCurrency(invoiceDisplayAmount(invoice))}</p></div>
+                          <div className="col-span-2"><p className="text-xs text-muted">Pix</p><p className="font-medium text-ink">{latestPayment ? `${paymentStatusLabel[latestPayment.status]} - ${formatDate(latestPayment.paidAt)}` : "-"}</p></div>
+                        </div>
+                        <div className="mt-4 grid gap-2">
+                          <Button type="button" variant="secondary" onClick={() => editInvoice(invoice)}>Editar</Button>
+                          {invoice.status !== "PAGO" && invoice.status !== "CANCELADO" && (
+                            <Button type="button" variant="secondary" disabled={payingId === invoice.id} onClick={() => pay(invoice.id)}>
+                              {payingId === invoice.id ? "Registrando..." : "Marcar pago"}
+                            </Button>
+                          )}
+                          {invoice.status !== "CANCELADO" && (
+                            <Button type="button" variant="danger" onClick={() => setInvoiceToCancel(invoice)}>Cancelar</Button>
+                          )}
+                          <Button type="button" variant="danger" onClick={() => setInvoiceToDelete(invoice)}>Excluir</Button>
+                        </div>
+                    </MobileRecordCard>
+                  );
+                })}
               </div>
 
               <div className="hidden overflow-x-auto md:block">
@@ -292,40 +344,55 @@ export default function InvoicesPage() {
                       <th className="px-4 py-3">Juros</th>
                       <th className="px-4 py-3">Atualizado</th>
                       <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Acao</th>
+                      <th className="px-4 py-3">Pix</th>
+                      <th className="px-4 py-3">Ação</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleInvoices.map((invoice) => (
-                      <tr key={invoice.id} className="border-t border-gray-100 hover:bg-gray-50/70">
-                        <td className="px-4 py-3 font-medium text-ink">{invoice.student.fullName}</td>
-                        <td className="px-4 py-3 text-gray-600">{invoice.plan?.name ?? "-"}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatDate(invoice.dueDate)}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatDate(invoice.paidAt)}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.amount)}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.fineAmount ?? 0)}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.interestAmount ?? 0)}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(invoiceDisplayAmount(invoice))}</td>
-                        <td className="px-4 py-3"><StatusBadge status={invoice.status} /></td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => editInvoice(invoice)}>
-                              Editar
-                            </Button>
-                            {invoice.status !== "PAGO" && invoice.status !== "CANCELADO" && (
-                              <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => pay(invoice.id)}>
-                                Marcar pago
+                    {visibleInvoices.map((invoice) => {
+                      const latestPayment = invoice.paymentTransactions?.[0];
+                      return (
+                        <tr key={invoice.id} className="border-t border-gray-100 hover:bg-gray-50/70">
+                          <td className="px-4 py-3 font-medium text-ink">{invoice.student.fullName}</td>
+                          <td className="px-4 py-3 text-gray-600">{invoice.plan?.name ?? "-"}</td>
+                          <td className="px-4 py-3 text-gray-600">{formatDate(invoice.dueDate)}</td>
+                          <td className="px-4 py-3 text-gray-600">{formatDate(invoice.paidAt)}</td>
+                          <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.amount)}</td>
+                          <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.fineAmount ?? 0)}</td>
+                          <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.interestAmount ?? 0)}</td>
+                          <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(invoiceDisplayAmount(invoice))}</td>
+                          <td className="px-4 py-3"><StatusBadge status={invoice.status} /></td>
+                          <td className="px-4 py-3">
+                            {latestPayment ? (
+                              <div>
+                                <StatusBadge status={paymentStatusLabel[latestPayment.status]} />
+                                <p className="mt-1 text-xs text-muted">{formatDate(latestPayment.paidAt)}</p>
+                              </div>
+                            ) : "-"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2">
+                              <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => editInvoice(invoice)}>
+                                Editar
                               </Button>
-                            )}
-                            {invoice.status !== "CANCELADO" && (
-                              <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setInvoiceToCancel(invoice)}>
-                                Cancelar
+                              {invoice.status !== "PAGO" && invoice.status !== "CANCELADO" && (
+                                <Button type="button" variant="secondary" className="h-8 px-3" disabled={payingId === invoice.id} onClick={() => pay(invoice.id)}>
+                                  {payingId === invoice.id ? "Registrando..." : "Marcar pago"}
+                                </Button>
+                              )}
+                              {invoice.status !== "CANCELADO" && (
+                                <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setInvoiceToCancel(invoice)}>
+                                  Cancelar
+                                </Button>
+                              )}
+                              <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setInvoiceToDelete(invoice)}>
+                                Excluir
                               </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -338,10 +405,18 @@ export default function InvoicesPage() {
       <ConfirmModal
         open={!!invoiceToCancel}
         title="Cancelar mensalidade"
-        description={`A mensalidade de ${invoiceToCancel?.student.fullName ?? ""} sera marcada como cancelada.`}
+        description={`A mensalidade de ${invoiceToCancel?.student.fullName ?? ""} será marcada como cancelada.`}
         confirmLabel="Cancelar mensalidade"
         onCancel={() => setInvoiceToCancel(null)}
         onConfirm={() => invoiceToCancel && cancelInvoice(invoiceToCancel)}
+      />
+      <ConfirmModal
+        open={!!invoiceToDelete}
+        title="Excluir mensalidade"
+        description={`A mensalidade de ${invoiceToDelete?.student.fullName ?? ""} será removida definitivamente. Essa ação não pode ser desfeita.`}
+        confirmLabel="Excluir mensalidade"
+        onCancel={() => setInvoiceToDelete(null)}
+        onConfirm={() => invoiceToDelete && deleteInvoice(invoiceToDelete)}
       />
     </AppShell>
   );

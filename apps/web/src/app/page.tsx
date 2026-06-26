@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -92,14 +92,14 @@ export default function AdminDashboardPage() {
     <AppShell>
       <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-semibold text-brand">Visao geral</p>
+          <p className="text-sm font-semibold text-brand">Visão geral</p>
           <h1 className="mt-1 text-2xl font-semibold text-ink">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted">Indicadores operacionais e financeiro do mes.</p>
+          <p className="mt-1 text-sm text-muted">Indicadores operacionais e financeiro do mês.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <QuickAction href="/students" label="Novo aluno" icon={UserPlus} />
           <QuickAction href="/invoices" label="Nova mensalidade" icon={CreditCard} />
-          <QuickAction href="/assessments" label="Nova avaliacao" icon={Activity} />
+          <QuickAction href="/assessments" label="Nova avaliação" icon={Activity} />
           <QuickAction href="/workouts" label="Novo treino" icon={ClipboardList} />
         </div>
       </header>
@@ -111,15 +111,15 @@ export default function AdminDashboardPage() {
       ) : (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <StatCard icon={Users} label="Alunos ativos" value={data?.activeStudents ?? 0} tone="teal" />
+            <StatCard icon={Users} label="Alunos ativos" value={data?.activeStudents ?? 0} tone="brand" />
             <StatCard icon={CalendarClock} label="Vencendo em 7 dias" value={data?.dueSoon ?? 0} tone="blue" />
             <StatCard icon={AlertTriangle} label="Mensalidades em atraso" value={data?.overdue ?? 0} tone="red" />
-            <StatCard icon={CircleDollarSign} label="Receita do mes" value={formatCurrency(data?.monthRevenue ?? 0)} tone="gray" />
+            <StatCard icon={CircleDollarSign} label="Receita do mês" value={formatCurrency(data?.monthRevenue ?? 0)} tone="gray" />
             <StatCard icon={WalletCards} label="Alunos inadimplentes" value={data?.delinquentStudents ?? 0} tone="amber" />
           </section>
 
           <section className="mt-6 grid gap-4 xl:grid-cols-2">
-            <ListPanel title="Mensalidades vencendo" empty="Nenhuma mensalidade vence nos proximos 7 dias.">
+            <ListPanel title="Mensalidades vencendo" empty="Nenhuma mensalidade vence nos próximos 7 dias.">
               {(data?.dueSoonInvoices ?? []).map((invoice) => (
                 <div key={invoice.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <div>
@@ -149,7 +149,7 @@ export default function AdminDashboardPage() {
               ))}
             </ListPanel>
 
-            <ListPanel title="Ultimos pagamentos" empty="Nenhum pagamento registrado ainda.">
+            <ListPanel title="Últimos pagamentos" empty="Nenhum pagamento registrado ainda.">
               {(data?.latestPayments ?? []).map((invoice) => (
                 <div key={invoice.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <div>
@@ -161,12 +161,12 @@ export default function AdminDashboardPage() {
               ))}
             </ListPanel>
 
-            <ListPanel title="Ultimos alunos cadastrados" empty="Nenhum aluno cadastrado ainda.">
+            <ListPanel title="Últimos alunos cadastrados" empty="Nenhum aluno cadastrado ainda.">
               {(data?.latestStudents ?? []).map((student) => (
                 <div key={student.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <div>
                     <Link href={`/students/${student.id}`} className="font-semibold text-ink hover:text-brand">{student.fullName}</Link>
-                    <p className="text-muted">{student.modality ?? "-"} - matricula {formatDate(student.enrollmentDate)}</p>
+                    <p className="text-muted">{student.modality ?? "-"} - matrícula {formatDate(student.enrollmentDate)}</p>
                   </div>
                   <StatusBadge status={student.status ?? "ATIVO"} />
                 </div>

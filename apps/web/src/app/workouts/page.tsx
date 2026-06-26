@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -6,7 +6,32 @@ import { Alert, Button, EmptyState, LoadingState, MobileRecordCard, SectionCard,
 import { api } from "@/lib/api";
 
 type Student = { id: string; fullName: string };
-type ExerciseForm = { name: string; sets: string; repetitions: string; load: string; restSeconds: string; notes: string; order: string };
+type ExerciseMediaType = "IMAGE" | "GIF" | "VIDEO" | "EXTERNAL_URL";
+type LibraryExercise = {
+  id: string;
+  name: string;
+  category: string;
+  modality: string;
+  muscleGroup?: string | null;
+  description?: string | null;
+  executionInstructions?: string | null;
+  commonMistakes?: string | null;
+  difficultyLevel: string;
+  mediaType: ExerciseMediaType;
+  mediaUrl: string;
+  thumbnailUrl?: string | null;
+};
+type ExerciseForm = {
+  libraryExerciseId: string;
+  libraryExercise?: LibraryExercise | null;
+  name: string;
+  sets: string;
+  repetitions: string;
+  load: string;
+  restSeconds: string;
+  notes: string;
+  order: string;
+};
 type WorkoutDayForm = { label: "A" | "B" | "C" | "D" | "E"; exercises: ExerciseForm[] };
 type Workout = {
   id: string;
@@ -23,12 +48,13 @@ type Workout = {
 
 const labels = ["A", "B", "C", "D", "E"] as const;
 const today = () => new Date().toISOString().slice(0, 10);
-const emptyExercise = (): ExerciseForm => ({ name: "", sets: "3", repetitions: "10", load: "", restSeconds: "", notes: "", order: "1" });
+const emptyExercise = (): ExerciseForm => ({ libraryExerciseId: "", name: "", sets: "3", repetitions: "10", load: "", restSeconds: "", notes: "", order: "1" });
 const emptyDays = (): WorkoutDayForm[] => labels.map((label) => ({ label, exercises: [] }));
 const emptyForm = () => ({ studentId: "", name: "", goal: "", startDate: today(), endDate: "", isActive: true, days: emptyDays() });
 
 export default function WorkoutsPage() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [libraryExercises, setLibraryExercises] = useState<LibraryExercise[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [selectedDay, setSelectedDay] = useState<(typeof labels)[number]>("A");
@@ -40,12 +66,14 @@ export default function WorkoutsPage() {
   const [success, setSuccess] = useState("");
 
   async function load() {
-    const [studentsPayload, workoutsPayload] = await Promise.all([
+    const [studentsPayload, workoutsPayload, exercisesPayload] = await Promise.all([
       api<{ students: Student[] }>("/students"),
-      api<{ workouts: Workout[] }>("/workouts")
+      api<{ workouts: Workout[] }>("/workouts"),
+      api<{ exercises: LibraryExercise[] }>("/exercises?active=true")
     ]);
     setStudents(studentsPayload.students);
     setWorkouts(workoutsPayload.workouts);
+    setLibraryExercises(exercisesPayload.exercises);
   }
 
   useEffect(() => {
@@ -56,7 +84,7 @@ export default function WorkoutsPage() {
 
   function addExercise() {
     if (!exerciseForm.name.trim()) {
-      setError("Informe o nome do exercicio.");
+      setError("Informe o nome do exercício.");
       return;
     }
 
@@ -67,7 +95,7 @@ export default function WorkoutsPage() {
         day.label === selectedDay
           ? {
               ...day,
-              exercises: [...day.exercises, { ...exerciseForm, order: String(day.exercises.length + 1) }]
+              exercises: [...day.exercises, { ...exerciseForm, libraryExercise: libraryExercises.find((item) => item.id === exerciseForm.libraryExerciseId) ?? null, order: String(day.exercises.length + 1) }]
             }
           : day
       )
@@ -121,6 +149,8 @@ export default function WorkoutsPage() {
           label,
           exercises: (day?.exercises ?? []).map((exercise, index) => ({
             name: exercise.name,
+            libraryExerciseId: exercise.libraryExerciseId ?? "",
+            libraryExercise: exercise.libraryExercise ?? null,
             sets: String(exercise.sets),
             repetitions: exercise.repetitions,
             load: exercise.load ?? "",
@@ -147,13 +177,25 @@ export default function WorkoutsPage() {
   }
 
   const selectedExercises = form.days.find((day) => day.label === selectedDay)?.exercises ?? [];
+  const selectedLibraryExercise = libraryExercises.find((exercise) => exercise.id === exerciseForm.libraryExerciseId) ?? null;
+
+  function selectLibraryExercise(id: string) {
+    const selected = libraryExercises.find((exercise) => exercise.id === id);
+    setExerciseForm((current) => ({
+      ...current,
+      libraryExerciseId: id,
+      libraryExercise: selected ?? null,
+      name: selected?.name ?? "",
+      notes: selected?.executionInstructions || selected?.description || current.notes
+    }));
+  }
 
   return (
     <AppShell>
       <header className="mb-6">
-        <p className="text-sm font-semibold text-brand">Prescricao</p>
+        <p className="text-sm font-semibold text-brand">Prescrição</p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">Fichas de treino</h1>
-        <p className="mt-1 text-sm text-muted">Crie fichas por aluno com treinos A-E e exercicios ordenados.</p>
+        <p className="mt-1 text-sm text-muted">Crie fichas por aluno com treinos A-E e exercícios ordenados.</p>
       </header>
 
       {error && <Alert type="error" message={error} />}
@@ -173,7 +215,7 @@ export default function WorkoutsPage() {
             <input className={fieldClass} value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
           </label>
           <label className="text-sm font-medium text-gray-700">
-            Inicio
+            Início
             <input className={fieldClass} type="date" value={form.startDate} onChange={(event) => setForm((current) => ({ ...current, startDate: event.target.value }))} />
           </label>
           <label className="text-sm font-medium text-gray-700">
@@ -204,22 +246,35 @@ export default function WorkoutsPage() {
             </div>
 
             <div className="grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 md:grid-cols-6">
-              <input className={fieldClass} placeholder="Exercicio" value={exerciseForm.name} onChange={(event) => setExerciseForm((current) => ({ ...current, name: event.target.value }))} />
-              <input className={fieldClass} placeholder="Series" value={exerciseForm.sets} onChange={(event) => setExerciseForm((current) => ({ ...current, sets: event.target.value }))} />
-              <input className={fieldClass} placeholder="Repeticoes" value={exerciseForm.repetitions} onChange={(event) => setExerciseForm((current) => ({ ...current, repetitions: event.target.value }))} />
+              <select className={`${fieldClass} md:col-span-2`} value={exerciseForm.libraryExerciseId} onChange={(event) => selectLibraryExercise(event.target.value)}>
+                <option value="">Digitar exercício manualmente</option>
+                {libraryExercises.map((exercise) => (
+                  <option key={exercise.id} value={exercise.id}>{exercise.name} - {exercise.category}</option>
+                ))}
+              </select>
+              <input className={fieldClass} placeholder="Exercício" value={exerciseForm.name} onChange={(event) => setExerciseForm((current) => ({ ...current, name: event.target.value }))} />
+              <input className={fieldClass} placeholder="Séries" value={exerciseForm.sets} onChange={(event) => setExerciseForm((current) => ({ ...current, sets: event.target.value }))} />
+              <input className={fieldClass} placeholder="Repetições" value={exerciseForm.repetitions} onChange={(event) => setExerciseForm((current) => ({ ...current, repetitions: event.target.value }))} />
               <input className={fieldClass} placeholder="Carga" value={exerciseForm.load} onChange={(event) => setExerciseForm((current) => ({ ...current, load: event.target.value }))} />
               <input className={fieldClass} placeholder="Descanso (s)" value={exerciseForm.restSeconds} onChange={(event) => setExerciseForm((current) => ({ ...current, restSeconds: event.target.value }))} />
               <Button type="button" variant="secondary" onClick={addExercise}>Adicionar</Button>
-              <textarea className={`${textareaClass} md:col-span-6`} placeholder="Observacoes do exercicio" value={exerciseForm.notes} onChange={(event) => setExerciseForm((current) => ({ ...current, notes: event.target.value }))} />
+              {selectedLibraryExercise && (
+                <div className="rounded-md border border-gray-200 bg-white p-3 text-sm md:col-span-6">
+                  <p className="font-semibold text-ink">{selectedLibraryExercise.name}</p>
+                  <p className="mt-1 text-muted">{selectedLibraryExercise.description || selectedLibraryExercise.executionInstructions || "Exercício selecionado da biblioteca."}</p>
+                  <p className="mt-2 text-xs font-semibold text-brand">{selectedLibraryExercise.mediaType} - {selectedLibraryExercise.mediaUrl}</p>
+                </div>
+              )}
+              <textarea className={`${textareaClass} md:col-span-6`} placeholder="Observações do exercício" value={exerciseForm.notes} onChange={(event) => setExerciseForm((current) => ({ ...current, notes: event.target.value }))} />
             </div>
 
             <div className="mt-3 space-y-2">
               {selectedExercises.length === 0 ? (
-                <p className="rounded-md border border-dashed border-gray-200 px-3 py-2 text-sm text-muted">Nenhum exercicio no Treino {selectedDay}.</p>
+                <p className="rounded-md border border-dashed border-gray-200 px-3 py-2 text-sm text-muted">Nenhum exercício no Treino {selectedDay}.</p>
               ) : (
                 selectedExercises.map((exercise, index) => (
                   <div key={`${exercise.name}-${index}`} className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">
-                    <span className="font-medium text-ink">{index + 1}. {exercise.name}</span>
+                    <span className="font-medium text-ink">{index + 1}. {exercise.name}{exercise.libraryExerciseId ? <span className="ml-2 text-xs text-brand">Biblioteca</span> : null}</span>
                     <span className="text-muted">{exercise.sets}x {exercise.repetitions} {exercise.load ? `| ${exercise.load}` : ""}</span>
                     <Button type="button" variant="danger" className="h-8 px-3" onClick={() => removeExercise(selectedDay, index)}>Remover</Button>
                   </div>
@@ -230,7 +285,7 @@ export default function WorkoutsPage() {
 
           <div className="flex gap-2 lg:col-span-4">
             <Button type="submit" disabled={saving}>{saving ? "Salvando..." : editingId ? "Atualizar ficha" : "Criar ficha"}</Button>
-            {editingId && <Button type="button" variant="secondary" onClick={() => { setEditingId(null); setForm(emptyForm()); }}>Cancelar edicao</Button>}
+            {editingId && <Button type="button" variant="secondary" onClick={() => { setEditingId(null); setForm(emptyForm()); }}>Cancelar edição</Button>}
           </div>
         </form>
       </SectionCard>
@@ -238,7 +293,7 @@ export default function WorkoutsPage() {
       {loading ? (
         <LoadingState />
       ) : workouts.length === 0 ? (
-        <EmptyState title="Nenhuma ficha cadastrada" description="Crie uma ficha para organizar treinos A-E e acompanhar a prescricao do aluno." />
+        <EmptyState title="Nenhuma ficha cadastrada" description="Crie uma ficha para organizar treinos A-E e acompanhar a prescrição do aluno." />
       ) : (
         <SectionCard className="overflow-hidden">
           <div className="grid gap-3 p-4 md:hidden">
@@ -253,7 +308,7 @@ export default function WorkoutsPage() {
                 </div>
                 <div className="mt-4 space-y-2 text-sm">
                   <div><p className="text-xs text-muted">Objetivo</p><p className="font-medium text-ink">{workout.goal}</p></div>
-                  <div><p className="text-xs text-muted">Periodo</p><p className="font-medium text-ink">{new Date(workout.startDate).toLocaleDateString("pt-BR")} - {workout.endDate ? new Date(workout.endDate).toLocaleDateString("pt-BR") : "sem fim"}</p></div>
+                  <div><p className="text-xs text-muted">Período</p><p className="font-medium text-ink">{new Date(workout.startDate).toLocaleDateString("pt-BR")} - {workout.endDate ? new Date(workout.endDate).toLocaleDateString("pt-BR") : "sem fim"}</p></div>
                 </div>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   <Button type="button" variant="secondary" onClick={() => editWorkout(workout)}>Editar</Button>
@@ -270,9 +325,9 @@ export default function WorkoutsPage() {
                   <th className="px-4 py-3">Ficha</th>
                   <th className="px-4 py-3">Aluno</th>
                   <th className="px-4 py-3">Objetivo</th>
-                  <th className="px-4 py-3">Periodo</th>
+                  <th className="px-4 py-3">Período</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Acao</th>
+                  <th className="px-4 py-3">Ação</th>
                 </tr>
               </thead>
               <tbody>

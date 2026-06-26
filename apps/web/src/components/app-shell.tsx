@@ -1,20 +1,23 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Activity, BarChart3, ClipboardList, CreditCard, Dumbbell, LogOut, Menu, PanelLeftClose, Settings, Users, X } from "lucide-react";
+import { Activity, BarChart3, BookOpen, ClipboardList, CreditCard, Dumbbell, LogOut, Menu, PanelLeftClose, Settings, UserPlus, Users, X } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { clearSession, getStoredUser, type SessionUser } from "@/lib/api";
 import { appConfig } from "@/lib/app-config";
 
 const links = [
   { href: "/", label: "Dashboard", icon: BarChart3 },
+  { href: "/enrollments", label: "Nova Matrícula", icon: UserPlus },
   { href: "/students", label: "Alunos", icon: Users },
   { href: "/plans", label: "Planos", icon: Dumbbell },
   { href: "/invoices", label: "Mensalidades", icon: CreditCard },
-  { href: "/assessments", label: "Avaliacoes", icon: Activity },
+  { href: "/assessments", label: "Avaliações", icon: Activity },
   { href: "/workouts", label: "Treinos", icon: ClipboardList },
-  { href: "/settings", label: "Configuracoes", icon: Settings }
+  { href: "/exercises", label: "Biblioteca", icon: BookOpen },
+  { href: "/settings", label: "Configurações", icon: Settings }
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -56,7 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             href={link.href}
             onClick={() => setMobileOpen(false)}
             className={`flex h-10 items-center gap-3 rounded-md px-3 text-sm font-semibold transition ${
-              active ? "bg-teal-50 text-brand ring-1 ring-teal-100" : "text-gray-600 hover:bg-gray-50 hover:text-gray-950"
+              active ? "bg-brand text-white shadow-sm shadow-orange-950/20" : "text-stone-300 hover:bg-white/10 hover:text-white"
             }`}
           >
             <Icon className="h-4 w-4" />
@@ -69,27 +72,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!authChecked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6f7f8] text-sm font-medium text-muted">
+      <div className="flex min-h-screen items-center justify-center bg-[#efeeeb] text-sm font-medium text-muted">
         Carregando painel...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f7f8]">
-      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-72 border-r border-gray-200 bg-white px-5 py-5 lg:block">
+    <div className="min-h-screen bg-[#efeeeb]">
+      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-72 border-r border-black bg-[#14110f] px-5 py-5 lg:block">
         <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-900 text-sm font-bold text-white ring-2 ring-teal-100">{appConfig.initials}</div>
+          <BrandLogo />
           <div>
-            <p className="text-base font-semibold text-ink">{appConfig.name}</p>
-            <p className="text-xs text-muted">{appConfig.adminSubtitle}</p>
+            <p className="text-base font-semibold text-white">{appConfig.name}</p>
+            <p className="text-xs text-stone-400">{appConfig.adminSubtitle}</p>
           </div>
         </div>
         {navigation}
         <button
           type="button"
           onClick={logout}
-          className="absolute bottom-5 left-5 flex h-10 w-[calc(100%-2.5rem)] items-center gap-3 rounded-md px-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 hover:text-gray-950"
+          className="absolute bottom-5 left-5 flex h-10 w-[calc(100%-2.5rem)] items-center gap-3 rounded-md px-3 text-sm font-semibold text-stone-300 transition hover:bg-white/10 hover:text-white"
         >
           <LogOut className="h-4 w-4" />
           Sair
@@ -99,16 +102,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button type="button" aria-label="Fechar menu" className="absolute inset-0 bg-black/30" onClick={() => setMobileOpen(false)} />
-          <aside className="relative h-full w-80 max-w-[85vw] border-r border-gray-200 bg-white p-5 shadow-xl">
+          <aside className="relative h-full w-80 max-w-[85vw] border-r border-black bg-[#14110f] p-5 shadow-xl">
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-900 text-sm font-bold text-white">{appConfig.initials}</div>
+                <BrandLogo compact />
                 <div>
-                  <p className="text-base font-semibold text-ink">{appConfig.name}</p>
-                  <p className="text-xs text-muted">Painel</p>
+                  <p className="text-base font-semibold text-white">{appConfig.name}</p>
+                  <p className="text-xs text-stone-400">Painel</p>
                 </div>
               </div>
-              <button type="button" aria-label="Fechar menu" className="rounded-md p-2 text-gray-500 hover:bg-gray-50" onClick={() => setMobileOpen(false)}>
+              <button type="button" aria-label="Fechar menu" className="rounded-md p-2 text-stone-300 hover:bg-white/10" onClick={() => setMobileOpen(false)}>
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -117,22 +120,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <main className="lg:pl-72">
-        <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
+      <main className="app-admin-main min-h-screen lg:pl-72">
+        <header className="sticky top-0 z-20 border-b border-[#ded7cf] bg-[#fffdfa]/90 backdrop-blur">
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             <button type="button" aria-label="Abrir menu" className="rounded-md p-2 text-gray-600 hover:bg-gray-50 lg:hidden" onClick={() => setMobileOpen(true)}>
               <Menu className="h-5 w-5" />
             </button>
-            <div className="hidden items-center gap-2 text-sm font-semibold text-gray-700 lg:flex">
+            <div className="hidden items-center gap-2 text-sm font-semibold text-stone-700 lg:flex">
               <PanelLeftClose className="h-4 w-4 text-muted" />
               Painel administrativo
             </div>
             <div className="ml-auto flex items-center gap-3">
               <div className="text-right">
-                <p className="text-sm font-semibold text-ink">{user?.name ?? "Usuario"}</p>
+                <p className="text-sm font-semibold text-ink">{user?.name ?? "Usuário"}</p>
                 <p className="text-xs text-muted">{user?.role ?? "ADMIN"}</p>
               </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#14110f] text-xs font-bold text-white ring-2 ring-orange-200">
                 {(user?.name ?? "U").slice(0, 2).toUpperCase()}
               </div>
             </div>
