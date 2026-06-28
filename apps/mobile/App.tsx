@@ -33,8 +33,8 @@ type Dashboard = {
 };
 
 export default function App() {
-  const [email, setEmail] = useState("aluno@academia.test");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
@@ -56,9 +56,9 @@ export default function App() {
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" />
         <View style={styles.loginBox}>
-          <Text style={styles.title}>Area do aluno</Text>
-          <Text style={styles.subtitle}>Acesse seu plano, vencimento e situacao financeira.</Text>
-          <TextInput style={styles.input} autoCapitalize="none" value={email} onChangeText={setEmail} placeholder="E-mail" />
+          <Text style={styles.title}>Área do aluno</Text>
+          <Text style={styles.subtitle}>Acesse seu plano, vencimento e situação financeira.</Text>
+          <TextInput style={styles.input} autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} placeholder="E-mail" />
           <TextInput style={styles.input} secureTextEntry value={password} onChangeText={setPassword} placeholder="Senha" />
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <TouchableOpacity style={styles.button} onPress={handleLogin}>
@@ -83,8 +83,8 @@ export default function App() {
 
         <View style={styles.grid}>
           <InfoCard label="Modalidade" value={dashboard.plan?.modality ?? "-"} />
-          <InfoCard label="Proximo vencimento" value={dashboard.nextInvoice ? new Date(dashboard.nextInvoice.dueDate).toLocaleDateString("pt-BR") : "-"} />
-          <InfoCard label="Situacao financeira" value={dashboard.financialStatus} />
+          <InfoCard label="Próximo vencimento" value={dashboard.nextInvoice ? new Date(dashboard.nextInvoice.dueDate).toLocaleDateString("pt-BR") : "-"} />
+          <InfoCard label="Situação financeira" value={dashboard.financialStatus} />
         </View>
 
         <View style={styles.card}>
@@ -95,7 +95,7 @@ export default function App() {
             <View key={day.label} style={styles.workoutDay}>
               <Text style={styles.dayTitle}>Treino {day.label}</Text>
               {day.exercises.length === 0 ? (
-                <Text style={styles.exerciseText}>Nenhum exercicio cadastrado.</Text>
+                <Text style={styles.exerciseText}>Nenhum exercício cadastrado.</Text>
               ) : (
                 day.exercises.map((exercise) => (
                   <Text key={`${day.label}-${exercise.name}`} style={styles.exerciseText}>
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: 6,
-    backgroundColor: "#0f766e",
+    backgroundColor: "#d86f21",
     padding: 12,
     alignItems: "center"
   },

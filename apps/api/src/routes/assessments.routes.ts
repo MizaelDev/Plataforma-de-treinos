@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { auditLog } from "../services/audit.service.js";
 import { createAssessment, updateAssessment } from "../services/assessments.service.js";
@@ -48,7 +48,7 @@ assessmentsRouter.get(
     });
 
     if (!assessment) {
-      response.status(404).json({ message: "Avaliacao nao encontrada." });
+      response.status(404).json({ message: "Avaliação não encontrada." });
       return;
     }
 

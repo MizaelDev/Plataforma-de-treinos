@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+﻿import { Prisma } from "@prisma/client";
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { env } from "../config/env.js";
@@ -18,7 +18,7 @@ export function errorHandler(error: unknown, _request: Request, response: Respon
   }
 
   if (isJsonParseError(error)) {
-    response.status(400).json({ message: "JSON invalido no corpo da requisicao." });
+    response.status(400).json({ message: "JSON inválido no corpo da requisição." });
     return;
   }
 
@@ -34,7 +34,7 @@ export function errorHandler(error: unknown, _request: Request, response: Respon
     }));
 
     response.status(400).json({
-      message: "Dados invalidos. Confira os campos do formulario.",
+      message: "Dados inválidos. Confira os campos do formulário.",
       issues
     });
     return;
@@ -44,29 +44,29 @@ export function errorHandler(error: unknown, _request: Request, response: Respon
     if (error.code === "P2002") {
       const target = Array.isArray(error.meta?.target) ? error.meta.target.join(",") : String(error.meta?.target ?? "");
       const message = target.includes("cpfHash")
-        ? "Ja existe um aluno cadastrado com este CPF."
-        : "Ja existe um registro com estes dados.";
+        ? "Já existe um aluno cadastrado com este CPF."
+        : "Já existe um registro com estes dados.";
 
       response.status(409).json({ message, code: error.code });
       return;
     }
 
     if (error.code === "P2003") {
-      response.status(400).json({ message: "Registro relacionado nao encontrado.", code: error.code });
+      response.status(400).json({ message: "Registro relacionado não encontrado.", code: error.code });
       return;
     }
 
     if (error.code === "P2025") {
-      response.status(404).json({ message: "Registro nao encontrado.", code: error.code });
+      response.status(404).json({ message: "Registro não encontrado.", code: error.code });
       return;
     }
 
-    response.status(400).json({ message: "Nao foi possivel salvar os dados.", code: error.code });
+    response.status(400).json({ message: "Não foi possível salvar os dados.", code: error.code });
     return;
   }
 
   if (error instanceof Prisma.PrismaClientValidationError) {
-    response.status(400).json({ message: "Dados incompativeis com o modelo do banco." });
+    response.status(400).json({ message: "Dados incompatíveis com o modelo do banco." });
     return;
   }
 

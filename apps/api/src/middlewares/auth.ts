@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from "express";
+﻿import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import type { Role } from "@academia/shared";
 import { env } from "../config/env.js";
@@ -46,14 +46,14 @@ export function requireAuth(request: Request, response: Response, next: NextFunc
     };
     next();
   } catch {
-    response.status(401).json({ message: "Token invalido ou expirado." });
+    response.status(401).json({ message: "Token inválido ou expirado." });
   }
 }
 
 export function requireRoles(...roles: Role[]) {
   return (request: Request, response: Response, next: NextFunction) => {
     if (!request.user || !roles.includes(request.user.role)) {
-      response.status(403).json({ message: "Permissao insuficiente." });
+      response.status(403).json({ message: "Permissão insuficiente." });
       return;
     }
     next();

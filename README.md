@@ -1,53 +1,55 @@
-# Academia Platform
+# Ronivon Treinamentos
 
-Base profissional para um sistema de gestao de academias, personal trainers e artes marciais.
+Sistema para gestão de academia, personal trainer e artes marciais, com painel administrativo, área do aluno, mensalidades, avaliações físicas, treinos, biblioteca de exercícios, Pix em modo mock/sandbox e redefinição de senha.
 
 ## Stack
 
-- Monorepo npm workspaces
+- Monorepo com npm workspaces
 - API: Node.js, Express, TypeScript, Prisma e PostgreSQL
-- Web admin: Next.js, TypeScript e Tailwind CSS
-- Mobile aluno: Expo, React Native e TypeScript
-- Auth: JWT com RBAC por `ADMIN`, `PROFESSOR` e `ALUNO`
+- Web: Next.js, TypeScript e Tailwind CSS
+- Mobile: Expo, React Native e TypeScript
+- Autenticação: JWT com perfis `ADMIN`, `PROFESSOR` e `ALUNO`
 
 ## Estrutura
 
 ```txt
 apps/
-  api/       API Express, Prisma, auth, servicos e rotas
-  web/       Painel administrativo Next.js
+  api/       API Express, Prisma, autenticação, serviços e rotas
+  web/       Painel administrativo e área do aluno
   mobile/    App Expo do aluno
 packages/
   shared/    Schemas Zod, tipos e constantes compartilhadas
+docs/
+  LAUNCH_CHECKLIST.md
 ```
 
-## Seguranca e LGPD desde o MVP
+## Segurança e LGPD
 
-- Dados operacionais sempre associados a `organizationId` para isolamento multi-tenant.
-- RBAC no backend com middlewares de autenticacao e permissao.
-- CPF normalizado e `cpfHash` com HMAC para unicidade/busca sem usar CPF puro como chave.
-- `AuditLog` para rastrear criacao, edicao, exclusao logica e pagamentos.
-- Soft delete em alunos e planos.
-- `.env` separado do codigo para segredos de JWT, CPF e banco.
-- Estrutura de storage preparada via `photoUrl`, `STORAGE_PROVIDER` e `STORAGE_BUCKET`.
+- Dados vinculados a `organizationId` para isolamento por organização.
+- Permissões validadas no backend por token e perfil.
+- Aluno acessa apenas dados vinculados ao próprio usuário.
+- CPF normalizado com `cpfHash` para evitar busca/unicidade usando CPF puro.
+- Logs de auditoria para ações importantes.
+- Soft delete/inativação em cadastros principais.
+- Segredos ficam em `.env`, fora do repositório.
 
-Para producao, evoluir para criptografia de campos sensiveis em repouso, refresh tokens, politica de retencao, consentimento LGPD, logs imutaveis e storage privado com URLs assinadas.
+Antes de produção real, revise criptografia de campos sensíveis, política de retenção LGPD, backup, logs, SMTP, domínio HTTPS e storage privado.
 
 ## Requisitos
 
 - Node.js 20+
-- PostgreSQL 14+ ou Docker
 - npm 10+
+- PostgreSQL 14+ ou Docker
 
-## Como rodar
+## Instalação local
 
-1. Instale dependencias:
+1. Instale dependências:
 
 ```bash
 npm install
 ```
 
-2. Configure ambiente:
+2. Configure variáveis:
 
 ```bash
 cp .env.example .env
@@ -59,13 +61,11 @@ No Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-3. Suba o PostgreSQL local:
+3. Suba o banco com Docker:
 
 ```bash
 docker compose up -d
 ```
-
-Se preferir usar PostgreSQL ja instalado, crie o banco manualmente e ajuste `DATABASE_URL` no `.env`.
 
 4. Gere Prisma, rode migrations e seed:
 
@@ -75,25 +75,17 @@ npm run db:migrate
 npm run db:seed
 ```
 
-5. Suba a API:
+5. Rode API e web:
 
 ```bash
 npm run dev:api
-```
-
-6. Suba o painel web:
-
-```bash
 npm run dev:web
 ```
 
-7. Suba o app mobile:
+API: `http://localhost:3333`  
+Web: `http://localhost:3000`
 
-```bash
-npm run dev:mobile
-```
-
-## Contas de demonstracao
+## Contas de demonstração
 
 Senha de todas: `123456`
 
@@ -101,42 +93,77 @@ Senha de todas: `123456`
 - Professor: `professor@academia.test`
 - Aluno: `aluno@academia.test`
 
+Essas contas são apenas para demonstração local. Em entrega real, crie usuários próprios e troque/remova as credenciais de seed.
+
+## Comandos úteis
+
+```bash
+npm run typecheck
+npm run build
+npm run check
+npm run start:api
+npm run start:web
+```
+
 ## Rotas principais
 
 - `POST /auth/login`
 - `GET /auth/me`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
 - `GET /dashboard/admin`
 - `GET /dashboard/student`
 - `GET|POST|PATCH|DELETE /students`
+- `POST /enrollments`
 - `GET|POST|PATCH|DELETE /plans`
 - `GET|POST|PATCH|DELETE /invoices`
 - `POST /invoices/:id/pay`
-- `POST /invoices/student-plans`
 - `GET|POST /assessments`
 - `GET|PUT|DELETE /assessments/:id`
 - `GET|POST /workouts`
 - `GET|PUT|DELETE /workouts/:id`
+- `GET|POST /exercises`
+- `GET|PUT|DELETE /exercises/:id`
+- `POST /payments/pix`
+- `GET /payments/:id/status`
+- `POST /webhooks/mercadopago`
+- `POST /webhooks/payments/:provider`
 
-## Fase 1 implementada
+## Pix Mercado Pago
 
-- Monorepo inicial.
-- API com Prisma, PostgreSQL, JWT e RBAC.
-- Modelos iniciais para usuarios, organizacao, alunos, planos, vinculo de plano, mensalidades, configuracoes financeiras e auditoria.
-- CRUD inicial de alunos, planos e mensalidades.
-- Dashboard administrativo.
-- Dashboard do aluno no app mobile.
-- Seed com dados de teste.
+O Pix está preparado com camada de provider. Em desenvolvimento, `PIX_PROVIDER_MODE=mock` gera QR Code fictício e permite testar sem dinheiro real.
 
-## Fase 2 implementada
+Para sandbox Mercado Pago:
 
-- Avaliacoes fisicas com aluno, professor responsavel, data, medidas corporais e IMC calculado automaticamente.
-- Historico de avaliacoes por aluno e comparacao simples das duas avaliacoes mais recentes.
-- Fichas de treino com aluno, professor responsavel, objetivo, periodo, status e treinos A-E.
-- Exercicios por treino com series, repeticoes, carga, descanso, observacoes e ordem.
-- Regra de apenas uma ficha ativa por aluno.
-- Menus e telas no painel para `Avaliacoes` e `Treinos`.
-- Dashboard/app do aluno exibindo ficha ativa quando existir.
+1. Configure `PIX_PROVIDER_MODE=sandbox`.
+2. Configure `MERCADO_PAGO_ACCESS_TOKEN`.
+3. Configure `API_BASE_URL` com URL pública da API.
+4. Cadastre webhook no Mercado Pago para `/webhooks/mercadopago`.
+5. Nunca exponha tokens no frontend.
 
-## Fora desta fase
+O pagamento manual continua disponível para admin/professor.
 
-Biblioteca completa de exercicios com videos, check-in por QR Code, WhatsApp, chat, IA, certificados, graduacao/faixas e relatorios avancados.
+## Redefinição de senha
+
+O login possui `Esqueci minha senha`. O aluno também recebe link para definir a senha quando o acesso é criado.
+
+Em desenvolvimento, se `SMTP_HOST` estiver vazio, a API imprime o link no console com `[email:dev]`. Em produção, configure SMTP real:
+
+```env
+SMTP_HOST=""
+SMTP_PORT=587
+SMTP_USER=""
+SMTP_PASS=""
+SMTP_FROM="Ronivon Treinamentos <no-reply@dominio.com>"
+```
+
+## Entrega
+
+Antes de apresentar ou publicar, rode:
+
+```bash
+npm run check
+npx prisma migrate status --schema apps/api/prisma/schema.prisma
+```
+
+Veja também [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md).

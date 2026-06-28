@@ -19,7 +19,7 @@ import { api } from "@/lib/api";
 import { formatCurrency, formatDate, invoiceDisplayAmount, normalizeMoneyInput } from "@/lib/format";
 
 type Student = { id: string; fullName: string };
-type Plan = { id: string; name: string; value: string };
+type Plan = { id: string; name: string; value: string; durationDays: number; dueDay: number };
 type Invoice = {
   id: string;
   student: Student;
@@ -38,12 +38,29 @@ type PaymentTransaction = {
   provider: "MERCADO_PAGO" | "ASAAS" | "EFI";
   status: "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "FAILED";
   amount: string;
+  qrCodeBase64?: string | null;
+  copyPasteCode?: string | null;
+  expiresAt?: string | null;
   paidAt?: string | null;
   createdAt: string;
 };
 
 const pageSize = 8;
-const today = () => new Date().toISOString().slice(0, 10);
+function formatDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+const today = () => formatDateInput(new Date());
+
+function dueDateFromPlan(plan: Plan) {
+  const date = new Date();
+  date.setDate(date.getDate() + plan.durationDays);
+  return formatDateInput(date);
+}
+
 const initialInvoiceForm = () => ({ studentId: "", planId: "", dueDate: today(), amount: "", status: "PENDENTE" });
 const paymentStatusLabel: Record<PaymentTransaction["status"], string> = {
   PENDING: "Aguardando Pix",
@@ -70,6 +87,8 @@ export default function InvoicesPage() {
   const [invoiceToCancel, setInvoiceToCancel] = useState<Invoice | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [creatingPixId, setCreatingPixId] = useState<string | null>(null);
+  const [activePayment, setActivePayment] = useState<PaymentTransaction | null>(null);
   const [recentlyPaidId, setRecentlyPaidId] = useState<string | null>(null);
 
   async function load() {
@@ -187,6 +206,52 @@ export default function InvoicesPage() {
     }
   }
 
+  async function createPixPayment(invoice: Invoice) {
+    setError("");
+    setSuccess("");
+    setCreatingPixId(invoice.id);
+
+    try {
+      const payload = await api<{ transaction: PaymentTransaction }>("/payments/pix", {
+        method: "POST",
+        body: JSON.stringify({ invoiceId: invoice.id })
+      });
+      setActivePayment(payload.transaction);
+      await load();
+      setSuccess("Pix gerado com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao gerar Pix.");
+    } finally {
+      setCreatingPixId(null);
+    }
+  }
+
+  async function refreshPaymentStatus(payment: PaymentTransaction) {
+    setError("");
+    setSuccess("");
+
+    try {
+      const payload = await api<{ transaction: PaymentTransaction }>(`/payments/${payment.id}/status`);
+      setActivePayment(payload.transaction);
+      await load();
+      setSuccess(payload.transaction.status === "PAID" ? "Pagamento Pix confirmado." : "Status do Pix atualizado.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao atualizar status do Pix.");
+    }
+  }
+
+  async function copyPixCode(payment = activePayment) {
+    if (!payment?.copyPasteCode) return;
+    await navigator.clipboard.writeText(payment.copyPasteCode);
+    setSuccess("Código Pix copiado.");
+  }
+
+  function qrCodeImageSrc(payment: PaymentTransaction) {
+    if (!payment.qrCodeBase64) return "";
+    const mediaType = payment.qrCodeBase64.startsWith("PHN2Z") ? "image/svg+xml" : "image/png";
+    return `data:${mediaType};base64,${payment.qrCodeBase64}`;
+  }
+
   async function cancelInvoice(invoice: Invoice) {
     setError("");
     setSuccess("");
@@ -211,6 +276,38 @@ export default function InvoicesPage() {
       {error && <Alert type="error" message={error} />}
       {success && <Alert type="success" message={success} />}
 
+      {activePayment && (
+        <SectionCard className="mb-6 p-5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+            {activePayment.qrCodeBase64 ? (
+              <img src={qrCodeImageSrc(activePayment)} alt="QR Code Pix" className="h-48 w-48 rounded-lg border border-gray-200 bg-white p-2" />
+            ) : null}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-ink">Pagamento Pix</p>
+                  <p className="mt-1 text-sm text-muted">Provedor: {activePayment.provider}</p>
+                </div>
+                <StatusBadge status={paymentStatusLabel[activePayment.status]} />
+              </div>
+              <p className="mt-4 text-sm text-muted">Pix copia e cola</p>
+              <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 break-all">
+                {activePayment.copyPasteCode ?? "-"}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button type="button" onClick={() => copyPixCode()}>Copiar Pix</Button>
+                {activePayment.status === "PENDING" && (
+                  <Button type="button" variant="secondary" onClick={() => refreshPaymentStatus(activePayment)}>
+                    Atualizar status
+                  </Button>
+                )}
+                <Button type="button" variant="secondary" onClick={() => setActivePayment(null)}>Fechar</Button>
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
       <SectionCard className="mb-6 p-4">
         <form onSubmit={submit} className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <label className="text-sm font-medium text-gray-700">
@@ -231,7 +328,8 @@ export default function InvoicesPage() {
                 setForm((current) => ({
                   ...current,
                   planId,
-                  amount: selectedPlan ? String(selectedPlan.value).replace(".", ",") : ""
+                  amount: selectedPlan ? String(selectedPlan.value).replace(".", ",") : "",
+                  dueDate: selectedPlan ? dueDateFromPlan(selectedPlan) : current.dueDate
                 }));
               }}
             >
@@ -321,6 +419,21 @@ export default function InvoicesPage() {
                               {payingId === invoice.id ? "Registrando..." : "Marcar pago"}
                             </Button>
                           )}
+                          {invoice.status !== "PAGO" && invoice.status !== "CANCELADO" && (
+                            <Button type="button" variant="secondary" disabled={creatingPixId === invoice.id} onClick={() => createPixPayment(invoice)}>
+                              {creatingPixId === invoice.id ? "Gerando Pix..." : "Gerar Pix"}
+                            </Button>
+                          )}
+                          {latestPayment && (
+                            <Button type="button" variant="secondary" onClick={() => setActivePayment(latestPayment)}>
+                              Ver QR Code
+                            </Button>
+                          )}
+                          {latestPayment?.status === "PENDING" && (
+                            <Button type="button" variant="secondary" onClick={() => refreshPaymentStatus(latestPayment)}>
+                              Atualizar status
+                            </Button>
+                          )}
                           {invoice.status !== "CANCELADO" && (
                             <Button type="button" variant="danger" onClick={() => setInvoiceToCancel(invoice)}>Cancelar</Button>
                           )}
@@ -378,6 +491,21 @@ export default function InvoicesPage() {
                               {invoice.status !== "PAGO" && invoice.status !== "CANCELADO" && (
                                 <Button type="button" variant="secondary" className="h-8 px-3" disabled={payingId === invoice.id} onClick={() => pay(invoice.id)}>
                                   {payingId === invoice.id ? "Registrando..." : "Marcar pago"}
+                                </Button>
+                              )}
+                              {invoice.status !== "PAGO" && invoice.status !== "CANCELADO" && (
+                                <Button type="button" variant="secondary" className="h-8 px-3" disabled={creatingPixId === invoice.id} onClick={() => createPixPayment(invoice)}>
+                                  {creatingPixId === invoice.id ? "Gerando..." : "Gerar Pix"}
+                                </Button>
+                              )}
+                              {latestPayment && (
+                                <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => setActivePayment(latestPayment)}>
+                                  Ver QR
+                                </Button>
+                              )}
+                              {latestPayment?.status === "PENDING" && (
+                                <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => refreshPaymentStatus(latestPayment)}>
+                                  Atualizar
                                 </Button>
                               )}
                               {invoice.status !== "CANCELADO" && (

@@ -18,21 +18,28 @@ type Plan = {
   isActive: boolean;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+type PaymentTransaction = {
+  id: string;
+  provider: "MERCADO_PAGO" | "ASAAS" | "EFI";
+  status: "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "FAILED";
+  qrCodeBase64?: string | null;
+  copyPasteCode?: string | null;
+  expiresAt?: string | null;
+};
 
-function nextDueDate(dueDay: number) {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  let date = new Date(year, month, Math.min(dueDay, daysInMonth));
+function formatDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
-  if (date < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
-    const nextMonthDays = new Date(year, month + 2, 0).getDate();
-    date = new Date(year, month + 1, Math.min(dueDay, nextMonthDays));
-  }
+const today = () => formatDateInput(new Date());
 
-  return date.toISOString().slice(0, 10);
+function dueDateFromPlan(plan: Plan) {
+  const date = new Date();
+  date.setDate(date.getDate() + plan.durationDays);
+  return formatDateInput(date);
 }
 
 const initialForm = () => ({
@@ -44,12 +51,14 @@ const initialForm = () => ({
   email: "",
   photoUrl: "",
   notes: "",
+  createAccess: true,
   modalities: [] as string[],
   planId: "",
   enrollmentDate: today(),
   dueDate: today(),
   amount: "",
   status: "PENDENTE" as "PENDENTE" | "PAGO",
+  paymentMode: "PENDENTE" as "PENDENTE" | "PAGO_MANUAL" | "PIX_MERCADO_PAGO",
   paidAt: today()
 });
 
@@ -62,6 +71,7 @@ export default function EnrollmentsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [createdStudentId, setCreatedStudentId] = useState<string | null>(null);
+  const [createdPayment, setCreatedPayment] = useState<PaymentTransaction | null>(null);
 
   useEffect(() => {
     api<{ plans: Plan[] }>("/plans")
@@ -87,7 +97,7 @@ export default function EnrollmentsPage() {
       ...current,
       planId,
       amount: plan ? String(plan.value).replace(".", ",") : current.amount,
-      dueDate: plan ? nextDueDate(plan.dueDay) : current.dueDate
+      dueDate: plan ? dueDateFromPlan(plan) : current.dueDate
     }));
   }
 
@@ -96,10 +106,11 @@ export default function EnrollmentsPage() {
     setError("");
     setSuccess("");
     setCreatedStudentId(null);
+    setCreatedPayment(null);
     setSaving(true);
 
     try {
-      const payload = await api<{ enrollment: { student: { id: string } } }>("/enrollments", {
+      const payload = await api<{ enrollment: { student: { id: string }; paymentTransaction?: PaymentTransaction; paymentError?: string } }>("/enrollments", {
         method: "POST",
         body: JSON.stringify({
           student: {
@@ -110,7 +121,8 @@ export default function EnrollmentsPage() {
             address: form.address,
             email: form.email,
             photoUrl: form.photoUrl,
-            notes: form.notes
+            notes: form.notes,
+            createAccess: form.createAccess
           },
           modalities: form.modalities,
           planId: form.planId,
@@ -118,15 +130,21 @@ export default function EnrollmentsPage() {
           invoice: {
             dueDate: form.dueDate,
             amount: form.amount,
-            status: form.status,
-            paidAt: form.status === "PAGO" ? form.paidAt : ""
+            status: form.paymentMode === "PAGO_MANUAL" ? "PAGO" : "PENDENTE",
+            paymentMode: form.paymentMode,
+            paidAt: form.paymentMode === "PAGO_MANUAL" ? form.paidAt : ""
           }
         })
       });
 
       setForm(initialForm());
       setCreatedStudentId(payload.enrollment.student.id);
-      setSuccess("Matrícula concluida com sucesso. Você pode registrar a avaliação agora ou fazer depois.");
+      setCreatedPayment(payload.enrollment.paymentTransaction ?? null);
+      setSuccess(
+        payload.enrollment.paymentError
+          ? `Matrícula criada, mas o Pix não foi gerado: ${payload.enrollment.paymentError}`
+          : "Matrícula concluída com sucesso. Você pode registrar a avaliação agora ou fazer depois."
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
@@ -134,12 +152,24 @@ export default function EnrollmentsPage() {
     }
   }
 
+  async function copyPixCode() {
+    if (!createdPayment?.copyPasteCode) return;
+    await navigator.clipboard.writeText(createdPayment.copyPasteCode);
+    setSuccess("Código Pix copiado.");
+  }
+
+  function qrCodeImageSrc(payment: PaymentTransaction) {
+    if (!payment.qrCodeBase64) return "";
+    const mediaType = payment.qrCodeBase64.startsWith("PHN2Z") ? "image/svg+xml" : "image/png";
+    return `data:${mediaType};base64,${payment.qrCodeBase64}`;
+  }
+
   return (
     <AppShell>
       <header className="mb-6">
-        <p className="text-sm font-semibold text-brand">Cadastro rapido</p>
+        <p className="text-sm font-semibold text-brand">Cadastro rápido</p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">Nova Matrícula</h1>
-        <p className="mt-1 text-sm text-muted">Cadastre o aluno, vincule um plano e gere a primeira mensalidade em um unico fluxo.</p>
+        <p className="mt-1 text-sm text-muted">Cadastre o aluno, vincule um plano e gere a primeira mensalidade em um único fluxo.</p>
       </header>
 
       {error && <Alert type="error" message={error} />}
@@ -158,6 +188,32 @@ export default function EnrollmentsPage() {
               <Button type="button" variant="secondary" onClick={() => router.push(`/students/${createdStudentId}`)}>
                 Fazer depois
               </Button>
+            </div>
+          </div>
+        </SectionCard>
+      )}
+      {createdPayment && (
+        <SectionCard className="mb-5 p-5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+            {createdPayment.qrCodeBase64 ? (
+              <img src={qrCodeImageSrc(createdPayment)} alt="QR Code Pix" className="h-48 w-48 rounded-lg border border-gray-200 bg-white p-2" />
+            ) : null}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-ink">Pix da primeira mensalidade</p>
+                  <p className="mt-1 text-sm text-muted">A mensalidade fica pendente até a confirmação do Mercado Pago.</p>
+                </div>
+                <StatusBadge status="AGUARDANDO PIX" />
+              </div>
+              <p className="mt-4 text-sm text-muted">Pix copia e cola</p>
+              <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 break-all">
+                {createdPayment.copyPasteCode ?? "-"}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button type="button" onClick={copyPixCode}>Copiar Pix</Button>
+                <Button type="button" variant="secondary" onClick={() => setCreatedPayment(null)}>Fechar</Button>
+              </div>
             </div>
           </div>
         </SectionCard>
@@ -198,6 +254,10 @@ export default function EnrollmentsPage() {
               <label className="text-sm font-medium text-gray-700">
                 Foto URL
                 <input className={fieldClass} value={form.photoUrl} onChange={(event) => setForm((current) => ({ ...current, photoUrl: event.target.value }))} />
+              </label>
+              <label className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+                <input type="checkbox" checked={form.createAccess} onChange={(event) => setForm((current) => ({ ...current, createAccess: event.target.checked }))} className="h-4 w-4 rounded border-gray-300 text-brand" />
+                Enviar link para o aluno definir a senha
               </label>
               <label className="text-sm font-medium text-gray-700 md:col-span-2 xl:col-span-3">
                 Endereço
@@ -263,13 +323,25 @@ export default function EnrollmentsPage() {
                 <input className={fieldClass} value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: normalizeMoneyInput(event.target.value) }))} />
               </label>
               <label className="text-sm font-medium text-gray-700">
-                Status inicial
-                <select className={fieldClass} value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as "PENDENTE" | "PAGO" }))}>
-                  <option value="PENDENTE">Pendente</option>
-                  <option value="PAGO">Pago</option>
+                Pagamento inicial
+                <select
+                  className={fieldClass}
+                  value={form.paymentMode}
+                  onChange={(event) => {
+                    const paymentMode = event.target.value as "PENDENTE" | "PAGO_MANUAL" | "PIX_MERCADO_PAGO";
+                    setForm((current) => ({
+                      ...current,
+                      paymentMode,
+                      status: paymentMode === "PAGO_MANUAL" ? "PAGO" : "PENDENTE"
+                    }));
+                  }}
+                >
+                  <option value="PENDENTE">Criar mensalidade pendente</option>
+                  <option value="PAGO_MANUAL">Marcar como paga manualmente</option>
+                  <option value="PIX_MERCADO_PAGO">Gerar Pix Mercado Pago</option>
                 </select>
               </label>
-              {form.status === "PAGO" && (
+              {form.paymentMode === "PAGO_MANUAL" && (
                 <label className="text-sm font-medium text-gray-700">
                   Data de pagamento
                   <input className={fieldClass} type="date" value={form.paidAt} onChange={(event) => setForm((current) => ({ ...current, paidAt: event.target.value }))} />
@@ -289,7 +361,10 @@ export default function EnrollmentsPage() {
               <div className="rounded-md bg-gray-50 p-3"><p className="text-muted">Plano</p><p className="font-semibold text-ink">{selectedPlan?.name ?? "-"}</p></div>
               <div className="rounded-md bg-gray-50 p-3"><p className="text-muted">Valor</p><p className="font-semibold text-ink">{form.amount ? formatCurrency(form.amount.replace(",", ".")) : "-"}</p></div>
               <div className="rounded-md bg-gray-50 p-3"><p className="text-muted">Vencimento</p><p className="font-semibold text-ink">{formatDate(form.dueDate)}</p></div>
-              <div className="rounded-md bg-gray-50 p-3"><p className="text-muted">Status</p><StatusBadge status={form.status} /></div>
+              <div className="rounded-md bg-gray-50 p-3">
+                <p className="text-muted">Pagamento inicial</p>
+                <p className="font-semibold text-ink">{form.paymentMode === "PIX_MERCADO_PAGO" ? "Pix Mercado Pago" : form.paymentMode === "PAGO_MANUAL" ? "Pago manualmente" : "Pendente"}</p>
+              </div>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
               <Button type="submit" disabled={saving}>{saving ? "Concluindo..." : "Concluir matrícula"}</Button>

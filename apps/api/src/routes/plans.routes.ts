@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { planSchema } from "@academia/shared";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { auditLog } from "../services/audit.service.js";
@@ -45,7 +45,7 @@ plansRouter.get(
     });
 
     if (!plan) {
-      response.status(404).json({ message: "Plano nao encontrado." });
+      response.status(404).json({ message: "Plano não encontrado." });
       return;
     }
 

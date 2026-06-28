@@ -1,6 +1,8 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { calculateInvoiceCharges } from "../services/finance.service.js";
+import { safePaymentTransactionSelect } from "../services/payments.service.js";
+import { getActivePlanAccess } from "../services/plan-access.service.js";
 import { prisma } from "../services/prisma.js";
 import { asyncRoute } from "../utils/async-route.js";
 
@@ -16,7 +18,12 @@ function getStudentId(user: Express.Request["user"]) {
 const workoutInclude = {
   professor: { select: { id: true, name: true } },
   days: {
-    include: { exercises: { orderBy: { order: "asc" as const } } },
+    include: {
+      exercises: {
+        include: { libraryExercise: true },
+        orderBy: { order: "asc" as const }
+      }
+    },
     orderBy: { label: "asc" as const }
   }
 };
@@ -27,7 +34,9 @@ const planSelect = {
   value: true,
   modality: true,
   dueDay: true,
-  durationDays: true
+  durationDays: true,
+  allowAssessments: true,
+  allowWorkouts: true
 };
 
 const invoiceSelect = {
@@ -37,12 +46,19 @@ const invoiceSelect = {
   amount: true,
   totalPaid: true,
   status: true,
-  plan: { select: planSelect }
+  plan: { select: planSelect },
+  paymentTransactions: {
+    select: safePaymentTransactionSelect,
+    orderBy: { createdAt: "desc" as const },
+    take: 1
+  }
 };
 
 const assessmentSelect = {
   id: true,
   assessedAt: true,
+  startDate: true,
+  trainingGoals: true,
   weightKg: true,
   heightCm: true,
   bmi: true,
@@ -61,6 +77,12 @@ const assessmentSelect = {
   rightCalfCircumferenceCm: true,
   waistCircumferenceCm: true,
   hipCircumferenceCm: true,
+  bioimpedance: true,
+  anthropometry: true,
+  anthropometryMeasuredAt: true,
+  skinfolds: true,
+  skinfoldsMeasuredAt: true,
+  physicalTests: true,
   notes: true,
   professor: { select: { id: true, name: true } }
 };
@@ -93,7 +115,7 @@ studentAreaRouter.get(
   asyncRoute(async (request, response) => {
     const studentId = getStudentId(request.user);
     if (!studentId) {
-      response.status(404).json({ message: "Perfil de aluno nao encontrado." });
+      response.status(404).json({ message: "Perfil de aluno não encontrado." });
       return;
     }
 
@@ -142,7 +164,7 @@ studentAreaRouter.get(
     ]);
 
     if (!student) {
-      response.status(404).json({ message: "Perfil de aluno nao encontrado." });
+      response.status(404).json({ message: "Perfil de aluno não encontrado." });
       return;
     }
 
@@ -155,6 +177,11 @@ studentAreaRouter.get(
     const activeStudentPlan = student.studentPlans[0] ?? null;
     const latestInvoiceWithPlan = latestInvoices.find((invoice) => invoice.plan);
     const currentPlan = activeStudentPlan?.plan ?? latestInvoiceWithPlan?.plan ?? null;
+    const planAccess = {
+      allowFinancial: true,
+      allowAssessments: currentPlan?.allowAssessments ?? false,
+      allowWorkouts: currentPlan?.allowWorkouts ?? false
+    };
     const nextDueDate =
       nextInvoice?.dueDate ??
       nextDueDateFromCycle(latestInvoiceWithPlan?.paidAt ?? latestInvoiceWithPlan?.dueDate, latestInvoiceWithPlan?.plan?.durationDays ?? null) ??
@@ -168,8 +195,9 @@ studentAreaRouter.get(
       nextInvoiceCharges: nextInvoice ? await calculateInvoiceCharges(organizationId, nextInvoice.dueDate, nextInvoice.amount) : null,
       financialStatus: overdueCount > 0 ? "INADIMPLENTE" : "EM_DIA",
       latestInvoices: invoicesWithCharges,
-      latestAssessment,
-      activeWorkout
+      planAccess,
+      latestAssessment: planAccess.allowAssessments ? latestAssessment : null,
+      activeWorkout: planAccess.allowWorkouts ? activeWorkout : null
     });
   })
 );
@@ -179,7 +207,7 @@ studentAreaRouter.get(
   asyncRoute(async (request, response) => {
     const studentId = getStudentId(request.user);
     if (!studentId) {
-      response.status(404).json({ message: "Perfil de aluno nao encontrado." });
+      response.status(404).json({ message: "Perfil de aluno não encontrado." });
       return;
     }
 
@@ -206,7 +234,13 @@ studentAreaRouter.get(
   asyncRoute(async (request, response) => {
     const studentId = getStudentId(request.user);
     if (!studentId) {
-      response.status(404).json({ message: "Perfil de aluno nao encontrado." });
+      response.status(404).json({ message: "Perfil de aluno não encontrado." });
+      return;
+    }
+
+    const access = await getActivePlanAccess(studentId, request.user!.organizationId);
+    if (!access.allowAssessments) {
+      response.status(403).json({ message: access.plan ? `Seu plano atual não inclui avaliações.` : "Você ainda não possui um plano ativo com acesso a avaliações." });
       return;
     }
 
@@ -225,7 +259,13 @@ studentAreaRouter.get(
   asyncRoute(async (request, response) => {
     const studentId = getStudentId(request.user);
     if (!studentId) {
-      response.status(404).json({ message: "Perfil de aluno nao encontrado." });
+      response.status(404).json({ message: "Perfil de aluno não encontrado." });
+      return;
+    }
+
+    const access = await getActivePlanAccess(studentId, request.user!.organizationId);
+    if (!access.allowWorkouts) {
+      response.status(403).json({ message: access.plan ? `Seu plano atual não inclui treinos.` : "Você ainda não possui um plano ativo com acesso a treinos." });
       return;
     }
 

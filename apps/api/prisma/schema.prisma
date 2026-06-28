@@ -33,6 +33,27 @@ enum WorkoutDayLabel {
   E
 }
 
+enum PaymentProvider {
+  MERCADO_PAGO
+  ASAAS
+  EFI
+}
+
+enum PaymentTransactionStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
+enum ExerciseMediaType {
+  IMAGE
+  GIF
+  VIDEO
+  EXTERNAL_URL
+}
+
 model Organization {
   id                 String              @id @default(uuid())
   name               String
@@ -44,8 +65,10 @@ model Organization {
   plans              Plan[]
   financialSettings  FinancialSettings?
   invoices           Invoice[]
+  paymentTransactions PaymentTransaction[]
   assessments        PhysicalAssessment[]
   workoutPlans       WorkoutPlan[]
+  exerciseLibrary    ExerciseLibrary[]
   auditLogs          AuditLog[]
 }
 
@@ -62,10 +85,23 @@ model User {
   assessments    PhysicalAssessment[] @relation("ProfessorAssessments")
   workoutPlans   WorkoutPlan[] @relation("ProfessorWorkoutPlans")
   auditLogs      AuditLog[]
+  passwordResetTokens PasswordResetToken[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
   @@index([organizationId, role])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt, expiresAt])
 }
 
 model Student {
@@ -88,6 +124,7 @@ model Student {
   status         StudentStatus @default(ATIVO)
   studentPlans   StudentPlan[]
   invoices       Invoice[]
+  paymentTransactions PaymentTransaction[]
   assessments    PhysicalAssessment[]
   workoutPlans   WorkoutPlan[]
   createdAt      DateTime      @default(now())
@@ -108,6 +145,8 @@ model Plan {
   modality       String
   durationDays   Int
   dueDay         Int
+  allowAssessments Boolean     @default(true)
+  allowWorkouts    Boolean     @default(true)
   isActive       Boolean       @default(true)
   studentPlans   StudentPlan[]
   invoices       Invoice[]
@@ -149,11 +188,39 @@ model Invoice {
   totalPaid      Decimal       @default(0) @db.Decimal(10, 2)
   status         InvoiceStatus @default(PENDENTE)
   notes          String?
+  paymentTransactions PaymentTransaction[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   @@index([organizationId, status, dueDate])
   @@index([studentId, dueDate])
+}
+
+model PaymentTransaction {
+  id                  String                   @id @default(uuid())
+  organizationId      String
+  organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceId           String
+  invoice             Invoice                  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  studentId           String
+  student             Student                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  provider            PaymentProvider
+  providerPaymentId   String?
+  status              PaymentTransactionStatus @default(PENDING)
+  amount              Decimal                  @db.Decimal(10, 2)
+  qrCode              String?
+  qrCodeBase64        String?
+  copyPasteCode       String?
+  expiresAt           DateTime?
+  paidAt              DateTime?
+  rawProviderResponse Json?
+  rawWebhookPayload   Json?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  @@index([organizationId, status, createdAt])
+  @@index([invoiceId, status])
+  @@index([provider, providerPaymentId])
 }
 
 model FinancialSettings {
@@ -176,6 +243,8 @@ model PhysicalAssessment {
   professorId                String?
   professor                  User?        @relation("ProfessorAssessments", fields: [professorId], references: [id], onDelete: SetNull)
   assessedAt                 DateTime
+  startDate                  DateTime?
+  trainingGoals              String[]     @default([])
   weightKg                   Decimal      @db.Decimal(6, 2)
   heightCm                   Decimal      @db.Decimal(6, 2)
   bmi                        Decimal      @db.Decimal(5, 2)
@@ -194,6 +263,12 @@ model PhysicalAssessment {
   rightCalfCircumferenceCm   Decimal?     @db.Decimal(6, 2)
   waistCircumferenceCm       Decimal?     @db.Decimal(6, 2)
   hipCircumferenceCm         Decimal?     @db.Decimal(6, 2)
+  bioimpedance               Json?
+  anthropometry              Json?
+  anthropometryMeasuredAt    DateTime?
+  skinfolds                  Json?
+  skinfoldsMeasuredAt        DateTime?
+  physicalTests              Json?
   notes                      String?
   createdAt                  DateTime     @default(now())
   updatedAt                  DateTime     @updatedAt
@@ -241,6 +316,8 @@ model Exercise {
   id           String     @id @default(uuid())
   workoutDayId String
   workoutDay   WorkoutDay @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  libraryExerciseId String?
+  libraryExercise   ExerciseLibrary? @relation(fields: [libraryExerciseId], references: [id], onDelete: SetNull)
   name         String
   sets         Int
   repetitions  String
@@ -248,6 +325,33 @@ model Exercise {
   restSeconds  Int?
   notes        String?
   order        Int
+
+  @@index([libraryExerciseId])
+}
+
+model ExerciseLibrary {
+  id                    String            @id @default(uuid())
+  organizationId        String
+  organization          Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name                  String
+  category              String
+  modality              String
+  muscleGroup           String?
+  description           String?
+  executionInstructions String?
+  commonMistakes        String?
+  difficultyLevel       String
+  mediaType             ExerciseMediaType
+  mediaUrl              String
+  thumbnailUrl          String?
+  isActive              Boolean           @default(true)
+  workoutExercises      Exercise[]
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  deletedAt             DateTime?
+
+  @@index([organizationId, isActive, deletedAt])
+  @@index([organizationId, modality, category])
 }
 
 model AuditLog {

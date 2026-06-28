@@ -118,12 +118,12 @@ export default function StudentDetailPage() {
     setSuccess("");
     setSavingAccess(true);
     try {
-      const payload = await api<{ access: { userId: string; email: string; temporaryPassword: string; created: boolean; isActive: boolean } }>(`/students/${student.id}/access`, { method: "POST" });
+      const payload = await api<{ access: { userId: string; email: string; created: boolean; isActive: boolean; setupEmailSent: boolean } }>(`/students/${student.id}/access`, { method: "POST" });
       setStudent((current) => current ? { ...current, user: { id: payload.access.userId, email: payload.access.email, isActive: payload.access.isActive } } : current);
       setSuccess(
         payload.access.created
-          ? `Acesso criado: ${payload.access.email} / senha temporaria ${payload.access.temporaryPassword}.`
-          : `Senha redefinida: ${payload.access.email} / senha temporaria ${payload.access.temporaryPassword}.`
+          ? `Acesso criado. Enviamos um link para ${payload.access.email} definir a senha.`
+          : `Link de redefinição enviado para ${payload.access.email}.`
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");

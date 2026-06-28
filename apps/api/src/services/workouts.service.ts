@@ -1,7 +1,8 @@
-import { workoutSchema, type WorkoutInput } from "@academia/shared";
+﻿import { workoutSchema, type WorkoutInput } from "@academia/shared";
 import { prisma } from "./prisma.js";
 import { AppError } from "../utils/errors.js";
 import { parseDate } from "../utils/date.js";
+import { ensureStudentPlanAllows } from "./plan-access.service.js";
 
 type Context = {
   organizationId: string;
@@ -18,15 +19,49 @@ async function ensureStudent(studentId: string, organizationId: string) {
     select: { id: true }
   });
 
-  if (!student) throw new AppError(404, "Aluno nao encontrado.");
+  if (!student) throw new AppError(404, "Aluno não encontrado.");
 }
 
 function workoutInclude() {
   return {
     student: { select: { id: true, fullName: true } },
     professor: { select: { id: true, name: true } },
-    days: { include: { exercises: { orderBy: { order: "asc" as const } } }, orderBy: { label: "asc" as const } }
+    days: {
+      include: {
+        exercises: {
+          include: { libraryExercise: true },
+          orderBy: { order: "asc" as const }
+        }
+      },
+      orderBy: { label: "asc" as const }
+    }
   };
+}
+
+async function ensureLibraryExercises(input: WorkoutInput, organizationId: string) {
+  const libraryIds = [
+    ...new Set(
+      input.days.flatMap((day) =>
+        day.exercises
+          .map((exercise) => exercise.libraryExerciseId)
+          .filter((id): id is string => Boolean(id))
+      )
+    )
+  ];
+  if (libraryIds.length === 0) return;
+
+  const total = await prisma.exerciseLibrary.count({
+    where: {
+      organizationId,
+      id: { in: libraryIds },
+      isActive: true,
+      deletedAt: null
+    }
+  });
+
+  if (total !== libraryIds.length) {
+    throw new AppError(400, "Um ou mais exercícios da biblioteca não foram encontrados ou estão inativos.");
+  }
 }
 
 function buildDays(input: WorkoutInput) {
@@ -34,6 +69,7 @@ function buildDays(input: WorkoutInput) {
     label: day.label,
     exercises: {
       create: day.exercises.map((exercise, index) => ({
+        libraryExerciseId: exercise.libraryExerciseId || null,
         name: exercise.name.trim(),
         sets: exercise.sets,
         repetitions: exercise.repetitions.trim(),
@@ -61,8 +97,10 @@ async function deactivateOtherActiveWorkouts(studentId: string, organizationId: 
 
 export async function createWorkout(payload: unknown, context: Context) {
   const input = workoutSchema.parse(payload);
-  if (!context.organizationId) throw new AppError(401, "Sessao invalida. Faca login novamente.");
+  if (!context.organizationId) throw new AppError(401, "Sessão inválida. Faça login novamente.");
   await ensureStudent(input.studentId, context.organizationId);
+  await ensureStudentPlanAllows(input.studentId, context.organizationId, "workouts");
+  await ensureLibraryExercises(input, context.organizationId);
 
   if (input.isActive) {
     await deactivateOtherActiveWorkouts(input.studentId, context.organizationId);
@@ -75,7 +113,7 @@ export async function createWorkout(payload: unknown, context: Context) {
       professorId: input.professorId || context.actorUserId,
       name: input.name.trim(),
       goal: input.goal.trim(),
-      startDate: parseDate(input.startDate, "Data de inicio")!,
+      startDate: parseDate(input.startDate, "Data de início")!,
       endDate: parseDate(input.endDate || undefined, "Data de fim", false),
       isActive: input.isActive,
       days: { create: buildDays(input) }
@@ -86,15 +124,27 @@ export async function createWorkout(payload: unknown, context: Context) {
 
 export async function updateWorkout(id: string, payload: unknown, context: Context) {
   const input = workoutSchema.parse(payload);
-  if (!context.organizationId) throw new AppError(401, "Sessao invalida. Faca login novamente.");
+  if (!context.organizationId) throw new AppError(401, "Sessão inválida. Faça login novamente.");
+
+  const existingWorkout = await prisma.workoutPlan.findFirst({
+    where: { id, organizationId: context.organizationId, deletedAt: null },
+    select: { id: true }
+  });
+
+  if (!existingWorkout) {
+    throw new AppError(404, "Ficha de treino não encontrada.");
+  }
+
   await ensureStudent(input.studentId, context.organizationId);
+  await ensureStudentPlanAllows(input.studentId, context.organizationId, "workouts");
+  await ensureLibraryExercises(input, context.organizationId);
 
   if (input.isActive) {
     await deactivateOtherActiveWorkouts(input.studentId, context.organizationId, id);
   }
 
   return prisma.$transaction(async (tx) => {
-    await tx.workoutDay.deleteMany({ where: { workoutPlanId: id } });
+    await tx.workoutDay.deleteMany({ where: { workoutPlanId: id, workoutPlan: { organizationId: context.organizationId } } });
 
     return tx.workoutPlan.update({
       where: { id, organizationId: context.organizationId },
@@ -103,7 +153,7 @@ export async function updateWorkout(id: string, payload: unknown, context: Conte
         professorId: input.professorId || context.actorUserId,
         name: input.name.trim(),
         goal: input.goal.trim(),
-        startDate: parseDate(input.startDate, "Data de inicio")!,
+        startDate: parseDate(input.startDate, "Data de início")!,
         endDate: parseDate(input.endDate || undefined, "Data de fim", false),
         isActive: input.isActive,
         days: { create: buildDays(input) }

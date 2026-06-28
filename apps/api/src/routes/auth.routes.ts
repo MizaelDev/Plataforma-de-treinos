@@ -1,9 +1,10 @@
-import bcrypt from "bcryptjs";
+﻿import bcrypt from "bcryptjs";
 import { Router } from "express";
-import { loginSchema } from "@academia/shared";
+import { forgotPasswordSchema, loginSchema, resetPasswordSchema } from "@academia/shared";
 import { requireAuth, signToken } from "../middlewares/auth.js";
 import { asyncRoute } from "../utils/async-route.js";
 import { prisma } from "../services/prisma.js";
+import { requestPasswordReset, resetPassword } from "../services/password-reset.service.js";
 
 export const authRouter = Router();
 
@@ -17,13 +18,13 @@ authRouter.post(
     });
 
     if (!user || !user.isActive) {
-      response.status(401).json({ message: "Credenciais invalidas." });
+      response.status(401).json({ message: "Credenciais inválidas." });
       return;
     }
 
     const passwordMatches = await bcrypt.compare(data.password, user.passwordHash);
     if (!passwordMatches) {
-      response.status(401).json({ message: "Credenciais invalidas." });
+      response.status(401).json({ message: "Credenciais inválidas." });
       return;
     }
 
@@ -45,6 +46,24 @@ authRouter.post(
         studentId: user.student?.id
       }
     });
+  })
+);
+
+authRouter.post(
+  "/forgot-password",
+  asyncRoute(async (request, response) => {
+    const data = forgotPasswordSchema.parse(request.body);
+    await requestPasswordReset(data.email);
+    response.json({ message: "Se o e-mail estiver cadastrado, enviaremos um link para redefinir a senha." });
+  })
+);
+
+authRouter.post(
+  "/reset-password",
+  asyncRoute(async (request, response) => {
+    const data = resetPasswordSchema.parse(request.body);
+    await resetPassword(data.token, data.password);
+    response.json({ message: "Senha redefinida com sucesso." });
   })
 );
 

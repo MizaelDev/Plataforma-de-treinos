@@ -77,7 +77,7 @@ export default function StudentFinancialPage() {
   async function copyPixCode() {
     if (!activePayment?.copyPasteCode) return;
     await navigator.clipboard.writeText(activePayment.copyPasteCode);
-    setSuccess("Codigo Pix copiado.");
+    setSuccess("Código Pix copiado.");
   }
 
   async function copyTransactionId() {
@@ -109,6 +109,12 @@ export default function StudentFinancialPage() {
     FAILED: "Falhou"
   };
 
+  function qrCodeImageSrc(payment: PaymentTransactionSummary) {
+    if (!payment.qrCodeBase64) return "";
+    const mediaType = payment.qrCodeBase64.startsWith("PHN2Z") ? "image/svg+xml" : "image/png";
+    return `data:${mediaType};base64,${payment.qrCodeBase64}`;
+  }
+
   return (
     <StudentShell>
       <header className="mb-6">
@@ -139,7 +145,7 @@ export default function StudentFinancialPage() {
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
                     {activePayment.qrCodeBase64 ? (
                       <img
-                        src={`data:image/svg+xml;base64,${activePayment.qrCodeBase64}`}
+                        src={qrCodeImageSrc(activePayment)}
                         alt="QR Code Pix"
                         className="h-48 w-48 rounded-lg border border-gray-200 bg-white p-2"
                       />
@@ -165,7 +171,7 @@ export default function StudentFinancialPage() {
                         </>
                       )}
                       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                        <Button type="button" onClick={copyPixCode}>Copiar codigo</Button>
+                        <Button type="button" onClick={copyPixCode}>Copiar código</Button>
                         {process.env.NODE_ENV !== "production" && <Button type="button" variant="secondary" onClick={copyTransactionId}>Copiar ID</Button>}
                         {process.env.NODE_ENV !== "production" && activePayment.status === "PENDING" && <Button type="button" variant="secondary" onClick={simulatePayment}>Simular pagamento</Button>}
                         <Button type="button" variant="secondary" onClick={() => setActivePayment(null)}>Fechar</Button>

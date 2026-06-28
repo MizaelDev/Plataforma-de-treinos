@@ -1,4 +1,4 @@
-import bcrypt from "bcryptjs";
+﻿import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { hashCpf, normalizeCpf } from "../src/utils/cpf.js";
 
@@ -63,17 +63,36 @@ async function main() {
     }
   });
 
-  const plan = await prisma.plan.create({
-    data: {
-      organizationId: organization.id,
-      name: "Musculacao Mensal",
-      value: 149.9,
-      modality: "Musculacao",
-      durationDays: 30,
-      dueDay: 10,
-      isActive: true
-    }
+  const existingPlan = await prisma.plan.findFirst({
+    where: { organizationId: organization.id, name: "Musculação Mensal", deletedAt: null }
   });
+
+  const plan = existingPlan
+    ? await prisma.plan.update({
+        where: { id: existingPlan.id },
+        data: {
+          value: 149.9,
+          modality: "Musculação",
+          durationDays: 30,
+          dueDay: 10,
+          isActive: true,
+          allowAssessments: true,
+          allowWorkouts: true
+        }
+      })
+    : await prisma.plan.create({
+        data: {
+          organizationId: organization.id,
+          name: "Musculação Mensal",
+          value: 149.9,
+          modality: "Musculação",
+          durationDays: 30,
+          dueDay: 10,
+          isActive: true,
+          allowAssessments: true,
+          allowWorkouts: true
+        }
+      });
 
   const student = await prisma.student.upsert({
     where: { userId: studentUser.id },
@@ -97,19 +116,34 @@ async function main() {
       email: "aluno@academia.test",
       photoUrl: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600",
       enrollmentDate: new Date(),
-      modality: "Musculacao",
+      modality: "Musculação",
       notes: "Aluno criado pelo seed.",
       status: "ATIVO"
     }
   });
 
-  await prisma.studentPlan.create({
-    data: {
-      studentId: student.id,
-      planId: plan.id,
-      startDate: new Date(),
-      isActive: true
-    }
+  const existingStudentPlan = await prisma.studentPlan.findFirst({
+    where: { studentId: student.id, planId: plan.id }
+  });
+
+  if (existingStudentPlan) {
+    await prisma.studentPlan.update({
+      where: { id: existingStudentPlan.id },
+      data: { startDate: new Date(), isActive: true, endDate: null }
+    });
+  } else {
+    await prisma.studentPlan.create({
+      data: {
+        studentId: student.id,
+        planId: plan.id,
+        startDate: new Date(),
+        isActive: true
+      }
+    });
+  }
+
+  await prisma.invoice.deleteMany({
+    where: { organizationId: organization.id, studentId: student.id, planId: plan.id }
   });
 
   await prisma.invoice.createMany({
@@ -135,7 +169,7 @@ async function main() {
     ]
   });
 
-  console.log("Seed concluido. Logins: admin@academia.test / professor@academia.test / aluno@academia.test, senha 123456");
+  console.log("Seed concluído. Logins: admin@academia.test / professor@academia.test / aluno@academia.test, senha 123456");
 }
 
 main()

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { Alert, Button, fieldClass } from "@/components/ui";
@@ -11,8 +12,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@academia.test");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -67,6 +68,8 @@ export default function LoginPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             type="email"
+            placeholder="seu@email.com"
+            autoComplete="email"
           />
         </label>
 
@@ -77,8 +80,16 @@ export default function LoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             type="password"
+            placeholder="Sua senha"
+            autoComplete="current-password"
           />
         </label>
+
+        <div className="mt-3 text-right">
+          <Link href="/forgot-password" className="text-sm font-semibold text-brand hover:text-brandDark">
+            Esqueci minha senha
+          </Link>
+        </div>
 
         <div className="mt-4">{error && <Alert type="error" message={error} />}</div>
 

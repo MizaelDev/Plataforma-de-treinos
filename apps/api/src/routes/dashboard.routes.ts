@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { calculateInvoiceCharges } from "../services/finance.service.js";
 import { prisma } from "../services/prisma.js";
@@ -115,7 +115,7 @@ dashboardRouter.get(
   asyncRoute(async (request, response) => {
     const studentId = request.user!.studentId;
     if (!studentId) {
-      response.status(404).json({ message: "Perfil de aluno nao encontrado." });
+      response.status(404).json({ message: "Perfil de aluno não encontrado." });
       return;
     }
 
@@ -161,7 +161,12 @@ dashboardRouter.get(
           endDate: true,
           isActive: true,
           days: {
-            include: { exercises: { orderBy: { order: "asc" } } },
+            include: {
+              exercises: {
+                include: { libraryExercise: true },
+                orderBy: { order: "asc" }
+              }
+            },
             orderBy: { label: "asc" }
           }
         },

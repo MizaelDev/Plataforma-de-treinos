@@ -1,7 +1,8 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { auditLog } from "../services/audit.service.js";
 import { calculateInvoiceCharges } from "../services/finance.service.js";
+import { safePaymentTransactionSelect } from "../services/payments.service.js";
 import { prisma } from "../services/prisma.js";
 import { createOrResetStudentAccess, createStudent, updateStudent } from "../services/students.service.js";
 import { asyncRoute } from "../utils/async-route.js";
@@ -77,7 +78,13 @@ studentsRouter.get(
     const student = await prisma.student.findFirst({
       where: { id, organizationId: request.user!.organizationId, deletedAt: null },
       include: {
-        invoices: { include: { plan: true }, orderBy: { dueDate: "desc" } },
+        invoices: {
+          include: {
+            plan: true,
+            paymentTransactions: { select: safePaymentTransactionSelect, orderBy: { createdAt: "desc" }, take: 1 }
+          },
+          orderBy: { dueDate: "desc" }
+        },
         studentPlans: { include: { plan: true }, orderBy: { createdAt: "desc" } },
         assessments: {
           where: { deletedAt: null },
@@ -88,7 +95,15 @@ studentsRouter.get(
           where: { deletedAt: null },
           include: {
             professor: { select: { id: true, name: true } },
-            days: { include: { exercises: { orderBy: { order: "asc" } } }, orderBy: { label: "asc" } }
+            days: {
+              include: {
+                exercises: {
+                  include: { libraryExercise: true },
+                  orderBy: { order: "asc" }
+                }
+              },
+              orderBy: { label: "asc" }
+            }
           },
           orderBy: [{ isActive: "desc" }, { createdAt: "desc" }]
         },
@@ -97,7 +112,7 @@ studentsRouter.get(
     });
 
     if (!student) {
-      response.status(404).json({ message: "Aluno nao encontrado." });
+      response.status(404).json({ message: "Aluno não encontrado." });
       return;
     }
 
@@ -158,9 +173,9 @@ studentsRouter.post(
       access: {
         userId: access.user.id,
         email: access.user.email,
-        temporaryPassword: access.temporaryPassword,
         isActive: access.user.isActive,
-        created: access.created
+        created: access.created,
+        setupEmailSent: access.setupEmailSent
       }
     });
   })

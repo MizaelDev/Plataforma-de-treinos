@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { auditLog } from "../services/audit.service.js";
 import { prisma } from "../services/prisma.js";
@@ -14,7 +14,15 @@ workoutsRouter.use(requireRoles("ADMIN", "PROFESSOR"));
 const workoutInclude = {
   student: { select: { id: true, fullName: true } },
   professor: { select: { id: true, name: true } },
-  days: { include: { exercises: { orderBy: { order: "asc" as const } } }, orderBy: { label: "asc" as const } }
+  days: {
+    include: {
+      exercises: {
+        include: { libraryExercise: true },
+        orderBy: { order: "asc" as const }
+      }
+    },
+    orderBy: { label: "asc" as const }
+  }
 };
 
 workoutsRouter.get(
@@ -54,7 +62,7 @@ workoutsRouter.get(
     });
 
     if (!workout) {
-      response.status(404).json({ message: "Ficha de treino nao encontrada." });
+      response.status(404).json({ message: "Ficha de treino não encontrada." });
       return;
     }
 

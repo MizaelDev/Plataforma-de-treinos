@@ -12,7 +12,7 @@ export async function login(email: string, password: string) {
 }
 
 export async function getStudentDashboard(token: string) {
-  const response = await fetch(`${API_URL}/dashboard/student`, {
+  const response = await fetch(`${API_URL}/student/dashboard`, {
     headers: { Authorization: `Bearer ${token}` }
   });
   const payload = await response.json();

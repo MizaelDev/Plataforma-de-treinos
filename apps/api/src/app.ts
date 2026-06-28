@@ -11,9 +11,13 @@ import { invoicesRouter } from "./routes/invoices.routes.js";
 import { dashboardRouter } from "./routes/dashboard.routes.js";
 import { assessmentsRouter } from "./routes/assessments.routes.js";
 import { workoutsRouter } from "./routes/workouts.routes.js";
+import { exercisesRouter } from "./routes/exercises.routes.js";
+import { enrollmentsRouter } from "./routes/enrollments.routes.js";
 import { settingsRouter } from "./routes/settings.routes.js";
 import { studentAreaRouter } from "./routes/student.routes.js";
 import { auditRouter } from "./routes/audit.routes.js";
+import { paymentsRouter } from "./routes/payments.routes.js";
+import { paymentWebhooksRouter } from "./routes/payment-webhooks.routes.js";
 
 export const app = express();
 
@@ -33,8 +37,12 @@ app.use("/plans", plansRouter);
 app.use("/invoices", invoicesRouter);
 app.use("/assessments", assessmentsRouter);
 app.use("/workouts", workoutsRouter);
+app.use("/exercises", exercisesRouter);
+app.use("/enrollments", enrollmentsRouter);
 app.use("/settings", settingsRouter);
 app.use("/student", studentAreaRouter);
 app.use("/audit-logs", auditRouter);
+app.use("/payments", paymentsRouter);
+app.use("/webhooks", paymentWebhooksRouter);
 
 app.use(errorHandler);

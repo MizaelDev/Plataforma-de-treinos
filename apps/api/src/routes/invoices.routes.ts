@@ -3,6 +3,7 @@ import { invoiceSchema } from "@academia/shared";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { auditLog } from "../services/audit.service.js";
 import { calculateInvoiceCharges } from "../services/finance.service.js";
+import { safePaymentTransactionSelect } from "../services/payments.service.js";
 import { prisma } from "../services/prisma.js";
 import { asyncRoute } from "../utils/async-route.js";
 import { requiredParam } from "../utils/http.js";
@@ -11,19 +12,17 @@ export const invoicesRouter = Router();
 
 invoicesRouter.use(requireAuth);
 
-function addDays(date: Date, days: number) {
-  const nextDate = new Date(date);
-  nextDate.setDate(nextDate.getDate() + days);
-  return nextDate;
-}
-
 invoicesRouter.get(
   "/",
   requireRoles("ADMIN", "PROFESSOR"),
   asyncRoute(async (request, response) => {
     const invoices = await prisma.invoice.findMany({
       where: { organizationId: request.user!.organizationId },
-      include: { student: { select: { id: true, fullName: true, email: true } }, plan: true },
+      include: {
+        student: { select: { id: true, fullName: true, email: true } },
+        plan: true,
+        paymentTransactions: { select: safePaymentTransactionSelect, orderBy: { createdAt: "desc" }, take: 1 }
+      },
       orderBy: { dueDate: "desc" }
     });
 
@@ -48,7 +47,7 @@ invoicesRouter.post(
     });
 
     if (!student) {
-      response.status(404).json({ message: "Aluno nao encontrado." });
+      response.status(404).json({ message: "Aluno não encontrado." });
       return;
     }
 
@@ -59,7 +58,7 @@ invoicesRouter.post(
       });
 
       if (!plan) {
-        response.status(404).json({ message: "Plano nao encontrado." });
+        response.status(404).json({ message: "Plano não encontrado." });
         return;
       }
     }
@@ -87,11 +86,15 @@ invoicesRouter.get(
     const id = requiredParam(request, "id");
     const invoice = await prisma.invoice.findFirst({
       where: { id, organizationId: request.user!.organizationId },
-      include: { student: { select: { id: true, fullName: true, email: true } }, plan: true }
+      include: {
+        student: { select: { id: true, fullName: true, email: true } },
+        plan: true,
+        paymentTransactions: { select: safePaymentTransactionSelect, orderBy: { createdAt: "desc" }, take: 1 }
+      }
     });
 
     if (!invoice) {
-      response.status(404).json({ message: "Mensalidade nao encontrada." });
+      response.status(404).json({ message: "Mensalidade não encontrada." });
       return;
     }
 
@@ -113,7 +116,7 @@ invoicesRouter.post(
     const student = await prisma.student.findFirst({ where: { id: studentId, organizationId: request.user!.organizationId, deletedAt: null } });
 
     if (!plan || !student) {
-      response.status(404).json({ message: "Aluno ou plano nao encontrado." });
+      response.status(404).json({ message: "Aluno ou plano não encontrado." });
       return;
     }
 
@@ -154,7 +157,7 @@ invoicesRouter.patch(
     });
 
     if (!existingInvoice) {
-      response.status(404).json({ message: "Mensalidade nao encontrada." });
+      response.status(404).json({ message: "Mensalidade não encontrada." });
       return;
     }
 
@@ -165,7 +168,7 @@ invoicesRouter.patch(
       });
 
       if (!student) {
-        response.status(404).json({ message: "Aluno nao encontrado." });
+        response.status(404).json({ message: "Aluno não encontrado." });
         return;
       }
     }
@@ -177,16 +180,10 @@ invoicesRouter.patch(
       });
 
       if (!plan) {
-        response.status(404).json({ message: "Plano nao encontrado." });
+        response.status(404).json({ message: "Plano não encontrado." });
         return;
       }
     }
-
-    const selectedPlan = data.planId
-      ? await prisma.plan.findFirst({
-          where: { id: data.planId, organizationId: request.user!.organizationId, deletedAt: null }
-        })
-      : existingInvoice.plan;
 
     if (data.status === "PAGO") {
       const paidAt = new Date();
@@ -194,58 +191,23 @@ invoicesRouter.patch(
       const amount = data.amount ?? existingInvoice.amount;
       const charges = await calculateInvoiceCharges(request.user!.organizationId, dueDate, amount);
 
-      const { invoice, nextInvoice } = await prisma.$transaction(async (tx) => {
-        const invoice = await tx.invoice.update({
-          where: { id, organizationId: request.user!.organizationId },
-          data: {
-            ...(data.studentId && { studentId: data.studentId }),
-            ...(data.planId !== undefined && { planId: data.planId }),
-            ...(data.dueDate && { dueDate }),
-            ...(data.amount && { amount: data.amount }),
-            status: "PAGO",
-            paidAt,
-            fineAmount: charges.fineAmount,
-            interestAmount: charges.interestAmount,
-            totalPaid: charges.total
-          }
-        });
-
-        if (!selectedPlan) {
-          return { invoice, nextInvoice: null };
+      const invoice = await prisma.invoice.update({
+        where: { id, organizationId: request.user!.organizationId },
+        data: {
+          ...(data.studentId && { studentId: data.studentId }),
+          ...(data.planId !== undefined && { planId: data.planId }),
+          ...(data.dueDate && { dueDate }),
+          ...(data.amount && { amount: data.amount }),
+          status: "PAGO",
+          paidAt,
+          fineAmount: charges.fineAmount,
+          interestAmount: charges.interestAmount,
+          totalPaid: charges.total
         }
-
-        const nextDueDate = addDays(paidAt, selectedPlan.durationDays);
-        const existingNextInvoice = await tx.invoice.findFirst({
-          where: {
-            organizationId: request.user!.organizationId,
-            studentId: data.studentId ?? existingInvoice.studentId,
-            planId: selectedPlan.id,
-            status: { in: ["PENDENTE", "ATRASADO"] },
-            dueDate: { gt: paidAt }
-          },
-          orderBy: { dueDate: "asc" }
-        });
-
-        if (existingNextInvoice) {
-          return { invoice, nextInvoice: existingNextInvoice };
-        }
-
-        const nextInvoice = await tx.invoice.create({
-          data: {
-            organizationId: request.user!.organizationId,
-            studentId: data.studentId ?? existingInvoice.studentId,
-            planId: selectedPlan.id,
-            dueDate: nextDueDate,
-            amount: selectedPlan.value,
-            status: "PENDENTE"
-          }
-        });
-
-        return { invoice, nextInvoice };
       });
 
       await auditLog({ organizationId: request.user!.organizationId, actorUserId: request.user!.id, action: "UPDATE_PAY", entity: "Invoice", entityId: invoice.id });
-      response.json({ invoice, nextInvoice });
+      response.json({ invoice });
       return;
     }
 
@@ -273,7 +235,7 @@ invoicesRouter.patch(
 
 invoicesRouter.post(
   "/:id/pay",
-  requireRoles("ADMIN"),
+  requireRoles("ADMIN", "PROFESSOR"),
   asyncRoute(async (request, response) => {
     const id = requiredParam(request, "id");
     const invoice = await prisma.invoice.findFirst({
@@ -282,77 +244,62 @@ invoicesRouter.post(
     });
 
     if (!invoice) {
-      response.status(404).json({ message: "Mensalidade nao encontrada." });
+      response.status(404).json({ message: "Mensalidade não encontrada." });
       return;
     }
 
     const charges = await calculateInvoiceCharges(request.user!.organizationId, invoice.dueDate, invoice.amount);
-    const { paidInvoice, nextInvoice, createdNextInvoice } = await prisma.$transaction(async (tx) => {
-      const paidAt = new Date();
-      const paidInvoice = await tx.invoice.update({
-        where: { id: invoice.id },
-        data: {
-          status: "PAGO",
-          paidAt,
-          fineAmount: charges.fineAmount,
-          interestAmount: charges.interestAmount,
-          totalPaid: charges.total
-        }
-      });
-
-      if (!invoice.planId || !invoice.plan) {
-        return { paidInvoice, nextInvoice: null, createdNextInvoice: false };
+    const paidInvoice = await prisma.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        status: "PAGO",
+        paidAt: new Date(),
+        fineAmount: charges.fineAmount,
+        interestAmount: charges.interestAmount,
+        totalPaid: charges.total
       }
-
-      const nextDueDate = addDays(paidAt, invoice.plan.durationDays);
-
-      const existingNextInvoice = await tx.invoice.findFirst({
-        where: {
-          organizationId: request.user!.organizationId,
-          studentId: invoice.studentId,
-          planId: invoice.planId,
-          status: { in: ["PENDENTE", "ATRASADO"] },
-          dueDate: { gt: paidAt }
-        },
-        orderBy: { dueDate: "asc" }
-      });
-
-      if (existingNextInvoice) {
-        return { paidInvoice, nextInvoice: existingNextInvoice, createdNextInvoice: false };
-      }
-
-      const nextInvoice = await tx.invoice.create({
-        data: {
-          organizationId: request.user!.organizationId,
-          studentId: invoice.studentId,
-          planId: invoice.planId,
-          dueDate: nextDueDate,
-          amount: invoice.plan.value,
-          status: "PENDENTE"
-        }
-      });
-
-      return { paidInvoice, nextInvoice, createdNextInvoice: true };
     });
 
     await auditLog({ organizationId: request.user!.organizationId, actorUserId: request.user!.id, action: "PAY", entity: "Invoice", entityId: invoice.id });
-    if (createdNextInvoice && nextInvoice) {
-      await auditLog({
-        organizationId: request.user!.organizationId,
-        actorUserId: request.user!.id,
-        action: "CREATE_NEXT_INVOICE",
-        entity: "Invoice",
-        entityId: nextInvoice.id
-      });
+
+    response.json({ invoice: paidInvoice, charges });
+  })
+);
+
+invoicesRouter.delete(
+  "/:id/permanent",
+  requireRoles("ADMIN", "PROFESSOR"),
+  asyncRoute(async (request, response) => {
+    const id = requiredParam(request, "id");
+    const invoice = await prisma.invoice.findFirst({
+      where: { id, organizationId: request.user!.organizationId },
+      select: { id: true }
+    });
+
+    if (!invoice) {
+      response.status(404).json({ message: "Mensalidade não encontrada." });
+      return;
     }
 
-    response.json({ invoice: paidInvoice, charges, nextInvoice });
+    await prisma.invoice.delete({
+      where: { id: invoice.id }
+    });
+
+    await auditLog({
+      organizationId: request.user!.organizationId,
+      actorUserId: request.user!.id,
+      action: "DELETE",
+      entity: "Invoice",
+      entityId: invoice.id
+    });
+
+    response.status(204).send();
   })
 );
 
 invoicesRouter.delete(
   "/:id",
-  requireRoles("ADMIN"),
+  requireRoles("ADMIN", "PROFESSOR"),
   asyncRoute(async (request, response) => {
     const id = requiredParam(request, "id");
     const invoice = await prisma.invoice.update({
