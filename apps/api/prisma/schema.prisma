@@ -34,9 +34,16 @@ enum WorkoutDayLabel {
 }
 
 enum PaymentProvider {
+  MOCK
   MERCADO_PAGO
   ASAAS
   EFI
+}
+
+enum InvoicePaymentMethod {
+  MANUAL
+  PIX_MOCK
+  PIX_MERCADO_PAGO
 }
 
 enum PaymentTransactionStatus {
@@ -187,6 +194,8 @@ model Invoice {
   interestAmount Decimal       @default(0) @db.Decimal(10, 2)
   totalPaid      Decimal       @default(0) @db.Decimal(10, 2)
   status         InvoiceStatus @default(PENDENTE)
+  paymentMethod  InvoicePaymentMethod?
+  externalPaymentId String?
   notes          String?
   paymentTransactions PaymentTransaction[]
   createdAt      DateTime      @default(now())

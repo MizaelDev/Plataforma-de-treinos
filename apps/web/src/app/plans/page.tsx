@@ -33,6 +33,7 @@ type Plan = {
 
 const pageSize = 8;
 const initialPlanForm = () => ({ name: "", value: "", modality: "", durationDays: "30", dueDay: "10", allowAssessments: false, allowWorkouts: false, isActive: true });
+const planTypeSuggestions = Array.from(new Set([...planModalities, "PILATES", "BOXE", "JIU-JITSU", "PERSONALIZADO"]));
 const planFields: Array<{ name: "name" | "value" | "modality" | "durationDays" | "dueDay"; label: string }> = [
   { name: "name", label: "Nome" },
   { name: "value", label: "Valor" },
@@ -156,20 +157,25 @@ export default function PlansPage() {
             <label key={name} className="text-sm font-medium text-gray-700">
               {label}
               {name === "modality" ? (
-                <select
+                <>
+                <input
                   className={fieldClass}
                   value={form.modality}
+                  list="plan-type-suggestions"
+                  placeholder="Ex.: ALONGAMENTO, PERSONAL, BOXE"
                   onChange={(event) => {
                     const modality = event.target.value;
                     const access = modality ? defaultPlanAccessForModality(modality) : { allowAssessments: false, allowWorkouts: false };
                     setForm((current) => ({ ...current, modality, ...access }));
                   }}
-                >
-                  <option value="">Selecione</option>
-                  {planModalities.map((option) => (
-                    <option key={option} value={option}>{option}</option>
+                />
+                <datalist id="plan-type-suggestions">
+                  {planTypeSuggestions.map((option) => (
+                    <option key={option} value={option} />
                   ))}
-                </select>
+                </datalist>
+                <span className="mt-1 block text-xs text-muted">Digite um tipo novo ou escolha uma sugestão.</span>
+                </>
               ) : (
                 <input
                   className={fieldClass}

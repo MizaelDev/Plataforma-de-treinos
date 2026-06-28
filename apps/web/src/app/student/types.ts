@@ -36,7 +36,7 @@ export type InvoiceSummary = {
 
 export type PaymentTransactionSummary = {
   id: string;
-  provider: "MERCADO_PAGO" | "ASAAS" | "EFI";
+  provider: "MOCK" | "MERCADO_PAGO" | "ASAAS" | "EFI";
   providerPaymentId?: string | null;
   status: "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "FAILED";
   amount: string;

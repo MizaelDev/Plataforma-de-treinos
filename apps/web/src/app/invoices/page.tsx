@@ -28,6 +28,8 @@ type Invoice = {
   paidAt?: string | null;
   amount: string;
   totalPaid?: string | number;
+  paymentMethod?: "MANUAL" | "PIX_MOCK" | "PIX_MERCADO_PAGO" | null;
+  externalPaymentId?: string | null;
   status: "PAGO" | "PENDENTE" | "ATRASADO" | "CANCELADO";
   charges?: { total: string; fineAmount: string; interestAmount: string; overdueDays: number };
   paymentTransactions?: PaymentTransaction[];
@@ -35,7 +37,7 @@ type Invoice = {
 
 type PaymentTransaction = {
   id: string;
-  provider: "MERCADO_PAGO" | "ASAAS" | "EFI";
+  provider: "MOCK" | "MERCADO_PAGO" | "ASAAS" | "EFI";
   status: "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "FAILED";
   amount: string;
   qrCodeBase64?: string | null;
@@ -69,6 +71,13 @@ const paymentStatusLabel: Record<PaymentTransaction["status"], string> = {
   CANCELLED: "Pix cancelado",
   FAILED: "Pix falhou"
 };
+
+function invoicePaymentMethodLabel(invoice: Invoice) {
+  if (invoice.paymentMethod === "MANUAL") return "Manual";
+  if (invoice.paymentMethod === "PIX_MOCK") return "Pix teste";
+  if (invoice.paymentMethod === "PIX_MERCADO_PAGO") return "Pix Mercado Pago";
+  return invoice.paymentTransactions?.[0] ? `Pix ${invoice.paymentTransactions[0].provider}` : "-";
+}
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -240,6 +249,21 @@ export default function InvoicesPage() {
     }
   }
 
+  async function simulatePayment(payment = activePayment) {
+    if (!payment?.id) return;
+    setError("");
+    setSuccess("");
+
+    try {
+      const payload = await api<{ transaction: PaymentTransaction }>(`/dev/payments/${payment.id}/approve`, { method: "POST" });
+      setActivePayment(payload.transaction);
+      await load();
+      setSuccess("Pagamento mock confirmado.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao simular pagamento.");
+    }
+  }
+
   async function copyPixCode(payment = activePayment) {
     if (!payment?.copyPasteCode) return;
     await navigator.clipboard.writeText(payment.copyPasteCode);
@@ -287,6 +311,9 @@ export default function InvoicesPage() {
                 <div>
                   <p className="text-sm font-semibold text-ink">Pagamento Pix</p>
                   <p className="mt-1 text-sm text-muted">Provedor: {activePayment.provider}</p>
+                  {activePayment.provider === "MOCK" && (
+                    <p className="mt-1 text-sm font-medium text-amber-700">Modo teste: nenhum valor será cobrado.</p>
+                  )}
                 </div>
                 <StatusBadge status={paymentStatusLabel[activePayment.status]} />
               </div>
@@ -299,6 +326,11 @@ export default function InvoicesPage() {
                 {activePayment.status === "PENDING" && (
                   <Button type="button" variant="secondary" onClick={() => refreshPaymentStatus(activePayment)}>
                     Atualizar status
+                  </Button>
+                )}
+                {process.env.NODE_ENV !== "production" && activePayment.provider === "MOCK" && activePayment.status === "PENDING" && (
+                  <Button type="button" variant="secondary" onClick={() => simulatePayment(activePayment)}>
+                    Simular pagamento
                   </Button>
                 )}
                 <Button type="button" variant="secondary" onClick={() => setActivePayment(null)}>Fechar</Button>
@@ -408,6 +440,7 @@ export default function InvoicesPage() {
                         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                           <div><p className="text-xs text-muted">Vencimento</p><p className="font-medium text-ink">{formatDate(invoice.dueDate)}</p></div>
                           <div><p className="text-xs text-muted">Pagamento</p><p className="font-medium text-ink">{formatDate(invoice.paidAt)}</p></div>
+                          <div><p className="text-xs text-muted">Forma</p><p className="font-medium text-ink">{invoicePaymentMethodLabel(invoice)}</p></div>
                           <div><p className="text-xs text-muted">Original</p><p className="font-medium text-ink">{formatCurrency(invoice.amount)}</p></div>
                           <div><p className="text-xs text-muted">Atualizado</p><p className="font-semibold text-ink">{formatCurrency(invoiceDisplayAmount(invoice))}</p></div>
                           <div className="col-span-2"><p className="text-xs text-muted">Pix</p><p className="font-medium text-ink">{latestPayment ? `${paymentStatusLabel[latestPayment.status]} - ${formatDate(latestPayment.paidAt)}` : "-"}</p></div>
@@ -445,13 +478,14 @@ export default function InvoicesPage() {
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[1120px] text-left text-sm">
+                <table className="w-full min-w-[1220px] text-left text-sm">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-4 py-3">Aluno</th>
                       <th className="px-4 py-3">Plano</th>
                       <th className="px-4 py-3">Vencimento</th>
                       <th className="px-4 py-3">Pagamento</th>
+                      <th className="px-4 py-3">Forma</th>
                       <th className="px-4 py-3">Valor original</th>
                       <th className="px-4 py-3">Multa</th>
                       <th className="px-4 py-3">Juros</th>
@@ -470,6 +504,7 @@ export default function InvoicesPage() {
                           <td className="px-4 py-3 text-gray-600">{invoice.plan?.name ?? "-"}</td>
                           <td className="px-4 py-3 text-gray-600">{formatDate(invoice.dueDate)}</td>
                           <td className="px-4 py-3 text-gray-600">{formatDate(invoice.paidAt)}</td>
+                          <td className="px-4 py-3 text-gray-600">{invoicePaymentMethodLabel(invoice)}</td>
                           <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.amount)}</td>
                           <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.fineAmount ?? 0)}</td>
                           <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.charges?.interestAmount ?? 0)}</td>

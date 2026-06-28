@@ -70,7 +70,10 @@ invoicesRouter.post(
         planId: data.planId,
         dueDate: new Date(data.dueDate),
         amount: data.amount,
-        status: data.status
+        status: data.status,
+        paidAt: data.status === "PAGO" ? new Date() : null,
+        paymentMethod: data.status === "PAGO" ? "MANUAL" : null,
+        totalPaid: data.status === "PAGO" ? data.amount : 0
       }
     });
 
@@ -200,6 +203,8 @@ invoicesRouter.patch(
           ...(data.amount && { amount: data.amount }),
           status: "PAGO",
           paidAt,
+          paymentMethod: "MANUAL",
+          externalPaymentId: null,
           fineAmount: charges.fineAmount,
           interestAmount: charges.interestAmount,
           totalPaid: charges.total
@@ -221,6 +226,8 @@ invoicesRouter.patch(
         ...(data.status && {
           status: data.status,
           paidAt: null,
+          paymentMethod: null,
+          externalPaymentId: null,
           fineAmount: 0,
           interestAmount: 0,
           totalPaid: 0
@@ -254,6 +261,8 @@ invoicesRouter.post(
       data: {
         status: "PAGO",
         paidAt: new Date(),
+        paymentMethod: "MANUAL",
+        externalPaymentId: null,
         fineAmount: charges.fineAmount,
         interestAmount: charges.interestAmount,
         totalPaid: charges.total

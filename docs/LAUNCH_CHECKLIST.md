@@ -1,6 +1,6 @@
-# Checklist de lançamento
+﻿# Checklist de lanÃ§amento
 
-Use este checklist antes de apresentar ao cliente ou subir em ambiente público.
+Use este checklist antes de apresentar ao cliente ou subir em ambiente pÃºblico.
 
 ## Ambiente
 
@@ -8,9 +8,9 @@ Use este checklist antes de apresentar ao cliente ou subir em ambiente público.
 - [ ] Configurar PostgreSQL com backup.
 - [ ] Configurar `.env` real no servidor.
 - [ ] Definir `NODE_ENV=production`.
-- [ ] Definir `PUBLIC_APP_URL` com o domínio do painel.
-- [ ] Definir `API_BASE_URL` com o domínio público da API.
-- [ ] Definir `CORS_ORIGIN` somente com os domínios permitidos.
+- [ ] Definir `PUBLIC_APP_URL` com o domÃ­nio do painel.
+- [ ] Definir `API_BASE_URL` com o domÃ­nio pÃºblico da API.
+- [ ] Definir `CORS_ORIGIN` somente com os domÃ­nios permitidos.
 - [ ] Usar `JWT_SECRET`, `CPF_HASH_SECRET` e `PAYMENT_WEBHOOK_SECRET` fortes.
 
 ## Banco
@@ -18,48 +18,48 @@ Use este checklist antes de apresentar ao cliente ou subir em ambiente público.
 - [ ] Rodar `npm run db:generate`.
 - [ ] Rodar migrations com `npm run db:migrate` ou `prisma migrate deploy`.
 - [ ] Conferir `npx prisma migrate status --schema apps/api/prisma/schema.prisma`.
-- [ ] Criar backup antes de migrações em produção.
+- [ ] Criar backup antes de migraÃ§Ãµes em produÃ§Ã£o.
 
-## Usuários
+## UsuÃ¡rios
 
-- [ ] Criar usuário admin real do dono.
+- [ ] Criar usuÃ¡rio admin real do dono.
 - [ ] Trocar senha das contas demo ou remover dados de seed.
 - [ ] Validar login de `ADMIN`, `PROFESSOR` e `ALUNO`.
-- [ ] Validar que aluno não acessa painel administrativo.
-- [ ] Validar que admin/professor não acessam dados de outra organização.
+- [ ] Validar que aluno nÃ£o acessa painel administrativo.
+- [ ] Validar que admin/professor nÃ£o acessam dados de outra organizaÃ§Ã£o.
 
 ## E-mail
 
 - [ ] Configurar SMTP real.
 - [ ] Testar `Esqueci minha senha`.
-- [ ] Testar link de definição de senha para aluno criado.
-- [ ] Conferir remetente e domínio.
+- [ ] Testar link de definiÃ§Ã£o de senha para aluno criado.
+- [ ] Conferir remetente e domÃ­nio.
 
 ## Pix
 
-- [ ] Manter `PIX_PROVIDER_MODE=mock` somente em demonstração.
+- [ ] Manter `PAYMENT_PROVIDER=mock` somente em demonstração/teste.
 - [ ] Para sandbox, configurar `MERCADO_PAGO_ACCESS_TOKEN` de teste.
-- [ ] Para produção, validar credenciais reais e webhook com HTTPS.
-- [ ] Confirmar que mensalidade só muda para paga após confirmação segura.
+- [ ] Para produÃ§Ã£o, validar credenciais reais e webhook com HTTPS.
+- [ ] Confirmar que mensalidade sÃ³ muda para paga apÃ³s confirmaÃ§Ã£o segura.
 - [ ] Manter pagamento manual funcionando.
 
 ## Interface
 
 - [ ] Validar logo, nome da marca e favicon.
 - [ ] Testar painel no desktop.
-- [ ] Testar área do aluno no celular.
-- [ ] Testar cadastro de matrícula completa.
-- [ ] Testar alunos, planos, mensalidades, avaliações, treinos e biblioteca.
+- [ ] Testar Ã¡rea do aluno no celular.
+- [ ] Testar cadastro de matrÃ­cula completa.
+- [ ] Testar alunos, planos, mensalidades, avaliaÃ§Ãµes, treinos e biblioteca.
 - [ ] Conferir mensagens de sucesso/erro.
 
-## Segurança/LGPD
+## SeguranÃ§a/LGPD
 
-- [ ] Não versionar `.env`.
-- [ ] Não expor CPF completo onde não for necessário.
-- [ ] Não expor tokens, hashes ou secrets no frontend.
-- [ ] Conferir política de retenção de dados sensíveis.
+- [ ] NÃ£o versionar `.env`.
+- [ ] NÃ£o expor CPF completo onde nÃ£o for necessÃ¡rio.
+- [ ] NÃ£o expor tokens, hashes ou secrets no frontend.
+- [ ] Conferir polÃ­tica de retenÃ§Ã£o de dados sensÃ­veis.
 - [ ] Configurar HTTPS.
-- [ ] Configurar logs sem dados sensíveis.
+- [ ] Configurar logs sem dados sensÃ­veis.
 
 ## Comandos finais
 

@@ -5,6 +5,7 @@ import { calculateInvoiceCharges } from "../services/finance.service.js";
 import { safePaymentTransactionSelect } from "../services/payments.service.js";
 import { prisma } from "../services/prisma.js";
 import { createOrResetStudentAccess, createStudent, updateStudent } from "../services/students.service.js";
+import { changeStudentCurrentPlan } from "../services/student-plans.service.js";
 import { asyncRoute } from "../utils/async-route.js";
 import { requiredParam } from "../utils/http.js";
 
@@ -178,6 +179,32 @@ studentsRouter.post(
         setupEmailSent: access.setupEmailSent
       }
     });
+  })
+);
+
+studentsRouter.post(
+  "/:id/plan",
+  requireRoles("ADMIN", "PROFESSOR"),
+  asyncRoute(async (request, response) => {
+    const id = requiredParam(request, "id");
+    const result = await changeStudentCurrentPlan(id, request.body, {
+      organizationId: request.user!.organizationId
+    });
+
+    await auditLog({
+      organizationId: request.user!.organizationId,
+      actorUserId: request.user!.id,
+      action: "CHANGE_PLAN",
+      entity: "Student",
+      entityId: id,
+      metadata: {
+        studentPlanId: result.studentPlan.id,
+        planId: result.studentPlan.planId,
+        invoiceId: result.invoice?.id ?? null
+      }
+    });
+
+    response.status(201).json(result);
   })
 );
 

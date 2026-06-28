@@ -3,11 +3,27 @@
 export const roles = ["ADMIN", "PROFESSOR", "ALUNO"] as const;
 export const invoiceStatuses = ["PAGO", "PENDENTE", "ATRASADO", "CANCELADO"] as const;
 export const studentStatuses = ["ATIVO", "INATIVO"] as const;
-export const planModalities = ["MUSCULAÇÃO", "LUTA", "MOBILIDADE", "FUNCIONAL"] as const;
+export const planModalities = ["MUSCULAÇÃO", "LUTA", "MOBILIDADE", "FUNCIONAL", "ALONGAMENTO", "PERSONAL", "CONDICIONAMENTO"] as const;
 export const workoutDayLabels = ["A", "B", "C", "D", "E"] as const;
 export const exerciseMediaTypes = ["IMAGE", "GIF", "VIDEO", "EXTERNAL_URL"] as const;
 export const exerciseDifficultyLevels = ["INICIANTE", "INTERMEDIARIO", "AVANCADO"] as const;
-export const exerciseCategories = ["Musculação", "Mobilidade", "Alongamento", "Funcional", "Muay Thai", "Karatê", "Condicionamento físico"] as const;
+export const exerciseModalities = ["Musculação", "Mobilidade", "Alongamento", "Funcional", "Muay Thai", "Karatê", "Condicionamento físico"] as const;
+export const exerciseCategories = [
+  "Força",
+  "Core",
+  "Cardio",
+  "Mobilidade de quadril",
+  "Mobilidade torácica",
+  "Mobilidade de ombro",
+  "Mobilidade de tornozelo",
+  "Mobilidade de coluna",
+  "Alongamento dinâmico",
+  "Alongamento estático",
+  "Funcional com peso corporal",
+  "Funcional com acessórios",
+  "Técnica",
+  "Condicionamento"
+] as const;
 export const enrollmentModalities = ["Musculação", "Mobilidade", "Muay Thai", "Karatê", "Funcional", "Personal Trainer", "Condicionamento físico"] as const;
 export const trainingGoals = ["Hipertrofia", "Fortalecimento", "Definição", "Saúde/Bem-estar", "Emagrecimento", "Preparação física"] as const;
 
@@ -17,6 +33,7 @@ export type StudentStatus = (typeof studentStatuses)[number];
 export type PlanModality = (typeof planModalities)[number];
 export type ExerciseMediaType = (typeof exerciseMediaTypes)[number];
 export type ExerciseDifficultyLevel = (typeof exerciseDifficultyLevels)[number];
+export type ExerciseModality = (typeof exerciseModalities)[number];
 export type EnrollmentModality = (typeof enrollmentModalities)[number];
 export type TrainingGoal = (typeof trainingGoals)[number];
 
@@ -60,6 +77,9 @@ export function normalizePlanModality(value: string) {
   if (normalized === "LUTA") return "LUTA";
   if (normalized === "MOBILIDADE") return "MOBILIDADE";
   if (normalized === "FUNCIONAL") return "FUNCIONAL";
+  if (normalized === "ALONGAMENTO") return "ALONGAMENTO";
+  if (normalized === "PERSONAL" || normalized === "PERSONAL TRAINER") return "PERSONAL";
+  if (normalized === "CONDICIONAMENTO" || normalized === "CONDICIONAMENTO FISICO") return "CONDICIONAMENTO";
   return value.trim();
 }
 
@@ -117,7 +137,10 @@ export const studentSchema = z.object({
 export const planSchema = z.object({
   name: z.string().trim().min(2, "Informe o nome do plano."),
   value: brNumber(z.number({ required_error: "Informe um valor válido.", invalid_type_error: "Informe um valor válido." }).positive("Informe um valor maior que zero.")),
-  modality: z.preprocess((value) => (typeof value === "string" ? normalizePlanModality(value) : value), z.enum(planModalities, { required_error: "Informe o tipo do plano." })),
+  modality: z.preprocess(
+    (value) => (typeof value === "string" ? normalizePlanModality(value) : value),
+    z.string({ required_error: "Informe o tipo do plano." }).trim().min(2, "Informe o tipo do plano.").max(80, "Tipo do plano deve ter no máximo 80 caracteres.")
+  ),
   durationDays: brNumber(z.number({ required_error: "Informe a duração do plano.", invalid_type_error: "Informe a duração do plano." }).int("Duração deve ser um número inteiro.").positive("Informe a duração do plano.")),
   dueDay: brNumber(z.number({ required_error: "Informe o dia de vencimento.", invalid_type_error: "Informe o dia de vencimento." }).int("Dia de vencimento deve ser um número inteiro.").min(1, "Dia de vencimento mínimo: 1.").max(31, "Dia de vencimento máximo: 31.")),
   allowAssessments: z.coerce.boolean().optional(),
@@ -131,6 +154,14 @@ export const invoiceSchema = z.object({
   dueDate: z.string().datetime().or(z.string().date()),
   amount: brNumber(z.number({ required_error: "Informe um valor válido.", invalid_type_error: "Informe um valor válido." }).positive("Informe um valor maior que zero.")),
   status: z.enum(invoiceStatuses).default("PENDENTE")
+});
+
+export const studentPlanChangeSchema = z.object({
+  planId: z.string().uuid("Selecione um plano."),
+  startDate: z.string().datetime().or(z.string().date()).optional(),
+  createInitialInvoice: z.coerce.boolean().default(true),
+  dueDate: z.string().datetime().or(z.string().date()).optional(),
+  amount: brNumber(z.number({ invalid_type_error: "Informe um valor válido." }).positive("Informe um valor maior que zero.")).optional().or(z.literal(""))
 });
 
 export const financialSettingsSchema = z.object({
@@ -204,19 +235,51 @@ export const workoutSchema = z.object({
   days: z.array(workoutDaySchema).default([])
 });
 
+function isValidMediaReference(value: string) {
+  if (!value.trim()) return false;
+  if (value.startsWith("data:")) return true;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isHttpMediaReference(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+const mediaReferenceSchema = z.string().trim().refine(isValidMediaReference, "Informe um arquivo ou uma URL válida.");
+const optionalMediaReferenceSchema = z.string().trim().refine((value) => !value || isValidMediaReference(value), "Informe um arquivo ou uma URL válida.").optional().or(z.literal(""));
+
 export const exerciseLibrarySchema = z.object({
   name: z.string().trim().min(2, "Informe o nome do exercício."),
-  category: z.enum(exerciseCategories, { required_error: "Informe a categoria." }),
-  modality: z.enum(exerciseCategories, { required_error: "Informe a modalidade." }),
+  category: z.string().trim().min(2, "Informe a categoria."),
+  modality: z.enum(exerciseModalities, { required_error: "Informe a modalidade." }),
   muscleGroup: z.string().trim().optional().or(z.literal("")),
   description: z.string().trim().optional().or(z.literal("")),
   executionInstructions: z.string().trim().optional().or(z.literal("")),
   commonMistakes: z.string().trim().optional().or(z.literal("")),
   difficultyLevel: z.enum(exerciseDifficultyLevels, { required_error: "Informe a dificuldade." }),
   mediaType: z.enum(exerciseMediaTypes, { required_error: "Informe o tipo da mídia." }),
-  mediaUrl: z.string().trim().url("Informe uma URL válida para a mídia."),
-  thumbnailUrl: z.string().trim().url("Informe uma URL válida para a thumbnail.").optional().or(z.literal("")),
+  mediaUrl: mediaReferenceSchema,
+  thumbnailUrl: optionalMediaReferenceSchema,
   isActive: z.coerce.boolean().default(true)
+}).superRefine((value, context) => {
+  if (value.mediaType === "EXTERNAL_URL" && !isHttpMediaReference(value.mediaUrl)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["mediaUrl"],
+      message: "Para link externo, informe uma URL iniciando com http ou https."
+    });
+  }
 });
 
 export const enrollmentSchema = z.object({
@@ -252,6 +315,7 @@ export const enrollmentSchema = z.object({
 export type StudentInput = z.infer<typeof studentSchema>;
 export type PlanInput = z.infer<typeof planSchema>;
 export type InvoiceInput = z.infer<typeof invoiceSchema>;
+export type StudentPlanChangeInput = z.infer<typeof studentPlanChangeSchema>;
 export type FinancialSettingsInput = z.infer<typeof financialSettingsSchema>;
 export type AssessmentInput = z.infer<typeof assessmentSchema>;
 export type WorkoutInput = z.infer<typeof workoutSchema>;

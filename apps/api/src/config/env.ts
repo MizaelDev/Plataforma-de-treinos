@@ -10,6 +10,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
   STORAGE_PROVIDER: z.string().default("local"),
   STORAGE_BUCKET: z.string().default("students"),
+  PAYMENT_PROVIDER: z.enum(["mock", "mercado_pago"]).default("mock"),
   PIX_PROVIDER: z.enum(["MERCADO_PAGO", "ASAAS", "EFI"]).default("MERCADO_PAGO"),
   PIX_PROVIDER_MODE: z.enum(["mock", "sandbox", "production"]).default("mock"),
   PIX_PAYMENT_EXPIRES_MINUTES: z.coerce.number().int().positive().default(30),
@@ -45,11 +46,11 @@ const envSchema = z.object({
   validateProductionSecret("CPF_HASH_SECRET", value.CPF_HASH_SECRET);
   validateProductionSecret("PAYMENT_WEBHOOK_SECRET", value.PAYMENT_WEBHOOK_SECRET);
 
-  if (value.PIX_PROVIDER_MODE === "production" && value.PIX_PROVIDER === "MERCADO_PAGO" && !value.MERCADO_PAGO_ACCESS_TOKEN) {
+  if (value.PAYMENT_PROVIDER === "mercado_pago" && !value.MERCADO_PAGO_ACCESS_TOKEN) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["MERCADO_PAGO_ACCESS_TOKEN"],
-      message: "MERCADO_PAGO_ACCESS_TOKEN é obrigatório para Pix Mercado Pago em produção."
+      message: "MERCADO_PAGO_ACCESS_TOKEN é obrigatório quando PAYMENT_PROVIDER=mercado_pago."
     });
   }
 

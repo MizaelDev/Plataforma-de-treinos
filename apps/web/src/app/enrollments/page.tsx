@@ -20,7 +20,7 @@ type Plan = {
 
 type PaymentTransaction = {
   id: string;
-  provider: "MERCADO_PAGO" | "ASAAS" | "EFI";
+  provider: "MOCK" | "MERCADO_PAGO" | "ASAAS" | "EFI";
   status: "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "FAILED";
   qrCodeBase64?: string | null;
   copyPasteCode?: string | null;
@@ -158,6 +158,20 @@ export default function EnrollmentsPage() {
     setSuccess("Código Pix copiado.");
   }
 
+  async function simulateCreatedPayment() {
+    if (!createdPayment?.id) return;
+    setError("");
+    setSuccess("");
+
+    try {
+      const payload = await api<{ transaction: PaymentTransaction }>(`/dev/payments/${createdPayment.id}/approve`, { method: "POST" });
+      setCreatedPayment(payload.transaction);
+      setSuccess("Pagamento mock confirmado.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao simular pagamento.");
+    }
+  }
+
   function qrCodeImageSrc(payment: PaymentTransaction) {
     if (!payment.qrCodeBase64) return "";
     const mediaType = payment.qrCodeBase64.startsWith("PHN2Z") ? "image/svg+xml" : "image/png";
@@ -202,7 +216,10 @@ export default function EnrollmentsPage() {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-ink">Pix da primeira mensalidade</p>
-                  <p className="mt-1 text-sm text-muted">A mensalidade fica pendente até a confirmação do Mercado Pago.</p>
+                  <p className="mt-1 text-sm text-muted">A mensalidade fica pendente até a confirmação do Pix.</p>
+                  {createdPayment.provider === "MOCK" && (
+                    <p className="mt-1 text-sm font-medium text-amber-700">Modo teste: nenhum valor será cobrado.</p>
+                  )}
                 </div>
                 <StatusBadge status="AGUARDANDO PIX" />
               </div>
@@ -212,6 +229,9 @@ export default function EnrollmentsPage() {
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button type="button" onClick={copyPixCode}>Copiar Pix</Button>
+                {process.env.NODE_ENV !== "production" && createdPayment.provider === "MOCK" && createdPayment.status === "PENDING" && (
+                  <Button type="button" variant="secondary" onClick={simulateCreatedPayment}>Simular pagamento</Button>
+                )}
                 <Button type="button" variant="secondary" onClick={() => setCreatedPayment(null)}>Fechar</Button>
               </div>
             </div>
@@ -338,7 +358,7 @@ export default function EnrollmentsPage() {
                 >
                   <option value="PENDENTE">Criar mensalidade pendente</option>
                   <option value="PAGO_MANUAL">Marcar como paga manualmente</option>
-                  <option value="PIX_MERCADO_PAGO">Gerar Pix Mercado Pago</option>
+                  <option value="PIX_MERCADO_PAGO">Gerar Pix</option>
                 </select>
               </label>
               {form.paymentMode === "PAGO_MANUAL" && (
@@ -363,7 +383,7 @@ export default function EnrollmentsPage() {
               <div className="rounded-md bg-gray-50 p-3"><p className="text-muted">Vencimento</p><p className="font-semibold text-ink">{formatDate(form.dueDate)}</p></div>
               <div className="rounded-md bg-gray-50 p-3">
                 <p className="text-muted">Pagamento inicial</p>
-                <p className="font-semibold text-ink">{form.paymentMode === "PIX_MERCADO_PAGO" ? "Pix Mercado Pago" : form.paymentMode === "PAGO_MANUAL" ? "Pago manualmente" : "Pendente"}</p>
+                <p className="font-semibold text-ink">{form.paymentMode === "PIX_MERCADO_PAGO" ? "Pix" : form.paymentMode === "PAGO_MANUAL" ? "Pago manualmente" : "Pendente"}</p>
               </div>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">

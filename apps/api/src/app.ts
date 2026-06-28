@@ -18,6 +18,7 @@ import { studentAreaRouter } from "./routes/student.routes.js";
 import { auditRouter } from "./routes/audit.routes.js";
 import { paymentsRouter } from "./routes/payments.routes.js";
 import { paymentWebhooksRouter } from "./routes/payment-webhooks.routes.js";
+import { devPaymentsRouter } from "./routes/dev-payments.routes.js";
 
 export const app = express();
 
@@ -43,6 +44,7 @@ app.use("/settings", settingsRouter);
 app.use("/student", studentAreaRouter);
 app.use("/audit-logs", auditRouter);
 app.use("/payments", paymentsRouter);
+app.use("/dev", devPaymentsRouter);
 app.use("/webhooks", paymentWebhooksRouter);
 
 app.use(errorHandler);

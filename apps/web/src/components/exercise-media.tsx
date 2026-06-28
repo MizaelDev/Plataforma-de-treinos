@@ -16,11 +16,12 @@ type ExerciseMediaProps = {
 
 export function ExerciseMedia({ mediaType, mediaUrl, thumbnailUrl, title, compact = false, onOpen }: ExerciseMediaProps) {
   const heightClass = compact ? "h-44 sm:h-48" : "h-64 sm:h-80";
+  const wrapperClass = "overflow-hidden rounded-lg border border-[#3a2a20] bg-[#100d0b]";
 
   if (!mediaUrl) {
     return (
-      <div className={`flex ${heightClass} w-full flex-col items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-muted`}>
-        <ImageIcon className="mb-2 h-6 w-6 text-gray-400" />
+      <div className={`flex ${heightClass} w-full flex-col items-center justify-center rounded-lg border border-dashed border-[#6b4b35] bg-[#18110d] px-4 text-center text-sm text-stone-300`}>
+        <ImageIcon className="mb-2 h-6 w-6 text-orange-300" />
         Sem mídia demonstrativa cadastrada
       </div>
     );
@@ -28,28 +29,28 @@ export function ExerciseMedia({ mediaType, mediaUrl, thumbnailUrl, title, compac
 
   if (mediaType === "IMAGE" || mediaType === "GIF") {
     return (
-      <button type="button" onClick={onOpen} className="block w-full overflow-hidden rounded-md border border-gray-200 bg-gray-50 text-left">
-        <img src={mediaUrl} alt={title} className={`${heightClass} w-full object-cover`} />
+      <button type="button" onClick={onOpen} className={`${wrapperClass} group block w-full text-left`}>
+        <img src={mediaUrl} alt={title} className={`${heightClass} w-full object-cover transition group-hover:scale-[1.02]`} />
       </button>
     );
   }
 
   if (mediaType === "VIDEO") {
     return (
-      <div className="overflow-hidden rounded-md border border-gray-200 bg-black">
+      <div className={wrapperClass}>
         <video src={mediaUrl} poster={thumbnailUrl ?? undefined} controls className={`${heightClass} w-full object-contain`} />
       </div>
     );
   }
 
   return (
-    <div className={`relative flex ${heightClass} w-full flex-col items-center justify-center overflow-hidden rounded-md border border-gray-200 bg-gray-50 px-4 text-center`}>
-      {thumbnailUrl ? <img src={thumbnailUrl} alt={title} className="absolute inset-0 h-full w-full object-cover opacity-70" /> : null}
-      <div className="relative rounded-md bg-white/95 p-3 shadow-sm">
+    <div className={`relative flex ${heightClass} w-full flex-col items-center justify-center overflow-hidden rounded-lg border border-[#3a2a20] bg-[#18110d] px-4 text-center`}>
+      {thumbnailUrl ? <img src={thumbnailUrl} alt={title} className="absolute inset-0 h-full w-full object-cover opacity-60" /> : null}
+      <div className="relative rounded-md border border-white/10 bg-[#100d0b]/95 p-3 shadow-sm">
         <PlayCircle className="mx-auto h-7 w-7 text-brand" />
-        <p className="mt-2 text-sm font-semibold text-ink">{title}</p>
-        <a href={mediaUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-9 items-center gap-2 rounded-md bg-gray-900 px-3 text-sm font-semibold text-white hover:bg-gray-800">
-          Abrir video
+        <p className="mt-2 text-sm font-semibold text-white">{title}</p>
+        <a href={mediaUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-9 items-center gap-2 rounded-md bg-brand px-3 text-sm font-semibold text-white hover:bg-brandDark">
+          Abrir vídeo
           <ExternalLink className="h-4 w-4" />
         </a>
       </div>

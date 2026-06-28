@@ -1,12 +1,12 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Activity, CreditCard, Dumbbell, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { BmiIndicator } from "@/components/bmi-indicator";
-import { Alert, Button, EmptyState, LoadingState, SectionCard, StatusBadge } from "@/components/ui";
+import { Alert, Button, EmptyState, LoadingState, SectionCard, StatusBadge, fieldClass } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatCpf, formatCurrency, formatDate, formatDecimal, formatPhone, invoiceDisplayAmount } from "@/lib/format";
 
@@ -19,6 +19,16 @@ type Invoice = {
   totalPaid?: string;
   plan?: { id: string; name: string; value: string; modality: string } | null;
   charges?: { fineAmount: string; interestAmount: string; total: string; overdueDays: number };
+};
+
+type PlanOption = {
+  id: string;
+  name: string;
+  value: string;
+  modality: string;
+  durationDays: number;
+  dueDay: number;
+  isActive: boolean;
 };
 
 type Assessment = {
@@ -87,6 +97,31 @@ type StudentDetail = {
   workoutPlans: WorkoutPlan[];
 };
 
+function formatDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function today() {
+  return formatDateInput(new Date());
+}
+
+function dueDateFromPlan(plan: Pick<PlanOption, "durationDays">, startDate = new Date()) {
+  const date = new Date(startDate);
+  date.setDate(date.getDate() + plan.durationDays);
+  return formatDateInput(date);
+}
+
+const initialPlanChangeForm = () => ({
+  planId: "",
+  startDate: today(),
+  createInitialInvoice: true,
+  dueDate: "",
+  amount: ""
+});
+
 function QuickAction({ href, label, icon: Icon }: { href: string; label: string; icon: typeof Plus }) {
   return (
     <Link href={href} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">
@@ -103,11 +138,20 @@ export default function StudentDetailPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [savingAccess, setSavingAccess] = useState(false);
+  const [plans, setPlans] = useState<PlanOption[]>([]);
+  const [planForm, setPlanForm] = useState(initialPlanChangeForm);
+  const [savingPlan, setSavingPlan] = useState(false);
 
   useEffect(() => {
     if (!params.id) return;
-    api<{ student: StudentDetail }>(`/students/${params.id}`)
-      .then((payload) => setStudent(payload.student))
+    Promise.all([
+      api<{ student: StudentDetail }>(`/students/${params.id}`),
+      api<{ plans: PlanOption[] }>("/plans")
+    ])
+      .then(([studentPayload, plansPayload]) => {
+        setStudent(studentPayload.student);
+        setPlans(plansPayload.plans.filter((plan) => plan.isActive));
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [params.id]);
@@ -129,6 +173,60 @@ export default function StudentDetailPage() {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
       setSavingAccess(false);
+    }
+  }
+
+  function selectPlan(planId: string) {
+    const plan = plans.find((item) => item.id === planId);
+    const startDate = new Date(`${planForm.startDate}T00:00:00`);
+
+    setPlanForm((current) => ({
+      ...current,
+      planId,
+      amount: plan ? String(plan.value).replace(".", ",") : "",
+      dueDate: plan ? dueDateFromPlan(plan, startDate) : current.dueDate
+    }));
+  }
+
+  function changePlanStartDate(startDate: string) {
+    const plan = plans.find((item) => item.id === planForm.planId);
+    const parsedStartDate = new Date(`${startDate}T00:00:00`);
+
+    setPlanForm((current) => ({
+      ...current,
+      startDate,
+      dueDate: plan ? dueDateFromPlan(plan, parsedStartDate) : current.dueDate
+    }));
+  }
+
+  async function changeStudentPlan(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!student) return;
+
+    setError("");
+    setSuccess("");
+    setSavingPlan(true);
+
+    try {
+      await api(`/students/${student.id}/plan`, {
+        method: "POST",
+        body: JSON.stringify({
+          planId: planForm.planId,
+          startDate: planForm.startDate,
+          createInitialInvoice: planForm.createInitialInvoice,
+          dueDate: planForm.dueDate,
+          amount: planForm.amount
+        })
+      });
+
+      const payload = await api<{ student: StudentDetail }>(`/students/${student.id}`);
+      setStudent(payload.student);
+      setPlanForm(initialPlanChangeForm());
+      setSuccess("Plano atual do aluno atualizado. O histórico antigo foi preservado.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado.");
+    } finally {
+      setSavingPlan(false);
     }
   }
 
@@ -206,6 +304,49 @@ export default function StudentDetailPage() {
                 <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Valor do plano</p><p className="font-semibold text-ink">{activePlan ? formatCurrency(activePlan.value) : "-"}</p></div>
                 <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-muted">Situação</p><p className="font-semibold text-ink">{overdueInvoices.length > 0 ? "Inadimplente" : "Em dia"}</p></div>
               </div>
+              <form onSubmit={changeStudentPlan} className="mt-5 rounded-md border border-[#3a2a20] bg-[#15100d] p-4">
+                <div>
+                  <p className="text-sm font-semibold text-white">Trocar plano atual</p>
+                  <p className="mt-1 text-xs text-stone-300">O plano anterior será encerrado, o novo ficará ativo e as mensalidades antigas não serão alteradas.</p>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <label className="text-sm font-medium text-stone-200">
+                    Novo plano
+                    <select className={fieldClass} value={planForm.planId} onChange={(event) => selectPlan(event.target.value)} required>
+                      <option value="">Selecione</option>
+                      {plans.map((plan) => (
+                        <option key={plan.id} value={plan.id}>{plan.name} - {plan.modality}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-sm font-medium text-stone-200">
+                    Início do novo plano
+                    <input className={fieldClass} type="date" value={planForm.startDate} onChange={(event) => changePlanStartDate(event.target.value)} />
+                  </label>
+                  <label className="text-sm font-medium text-stone-200">
+                    Valor da mensalidade
+                    <input className={fieldClass} value={planForm.amount} onChange={(event) => setPlanForm((current) => ({ ...current, amount: event.target.value }))} placeholder="Usa valor do plano" />
+                  </label>
+                  <label className="text-sm font-medium text-stone-200">
+                    Vencimento da mensalidade
+                    <input className={fieldClass} type="date" value={planForm.dueDate} onChange={(event) => setPlanForm((current) => ({ ...current, dueDate: event.target.value }))} />
+                  </label>
+                </div>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <label className="flex items-center gap-2 text-sm font-medium text-stone-200">
+                    <input
+                      type="checkbox"
+                      checked={planForm.createInitialInvoice}
+                      onChange={(event) => setPlanForm((current) => ({ ...current, createInitialInvoice: event.target.checked }))}
+                      className="h-4 w-4 rounded border-stone-600 text-brand"
+                    />
+                    Criar próxima mensalidade do novo plano
+                  </label>
+                  <Button type="submit" disabled={savingPlan || !planForm.planId}>
+                    {savingPlan ? "Atualizando..." : "Atualizar plano do aluno"}
+                  </Button>
+                </div>
+              </form>
             </SectionCard>
           </section>
 

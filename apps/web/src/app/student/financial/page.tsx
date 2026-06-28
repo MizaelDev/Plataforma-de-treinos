@@ -92,7 +92,7 @@ export default function StudentFinancialPage() {
     setSuccess("");
 
     try {
-      const payload = await api<{ transaction: PaymentTransactionSummary }>(`/payments/${activePayment.id}/mock-confirm`, { method: "POST" });
+      const payload = await api<{ transaction: PaymentTransactionSummary }>(`/dev/payments/${activePayment.id}/approve`, { method: "POST" });
       setActivePayment(payload.transaction);
       await loadInvoices();
       setSuccess("Pagamento mock confirmado.");
@@ -155,6 +155,9 @@ export default function StudentFinancialPage() {
                         <div>
                           <p className="text-sm font-semibold text-ink">Pagamento Pix</p>
                           <p className="mt-1 text-sm text-muted">Provedor: {activePayment.provider}</p>
+                          {activePayment.provider === "MOCK" && (
+                            <p className="mt-1 text-sm font-medium text-amber-700">Modo teste: nenhum valor será cobrado.</p>
+                          )}
                         </div>
                         <StatusBadge status={paymentStatusLabel[activePayment.status]} />
                       </div>
@@ -173,7 +176,9 @@ export default function StudentFinancialPage() {
                       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                         <Button type="button" onClick={copyPixCode}>Copiar código</Button>
                         {process.env.NODE_ENV !== "production" && <Button type="button" variant="secondary" onClick={copyTransactionId}>Copiar ID</Button>}
-                        {process.env.NODE_ENV !== "production" && activePayment.status === "PENDING" && <Button type="button" variant="secondary" onClick={simulatePayment}>Simular pagamento</Button>}
+                        {process.env.NODE_ENV !== "production" && activePayment.provider === "MOCK" && activePayment.status === "PENDING" && (
+                          <Button type="button" variant="secondary" onClick={simulatePayment}>Simular pagamento</Button>
+                        )}
                         <Button type="button" variant="secondary" onClick={() => setActivePayment(null)}>Fechar</Button>
                       </div>
                     </div>

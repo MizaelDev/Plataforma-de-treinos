@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { exerciseCategories, exerciseDifficultyLevels, exerciseMediaTypes } from "@academia/shared";
+import { exerciseCategories, exerciseDifficultyLevels, exerciseMediaTypes, exerciseModalities } from "@academia/shared";
 import { AppShell } from "@/components/app-shell";
 import { Alert, Button, EmptyState, LoadingState, MobileRecordCard, SectionCard, StatusBadge, TableToolbar, fieldClass, textareaClass } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -25,8 +25,8 @@ type Exercise = {
 
 const initialForm = () => ({
   name: "",
-  category: "Mobilidade",
   modality: "Mobilidade",
+  category: "Mobilidade de quadril",
   muscleGroup: "",
   description: "",
   executionInstructions: "",
@@ -44,6 +44,76 @@ const mediaTypeLabel: Record<ExerciseMediaType, string> = {
   VIDEO: "Vídeo",
   EXTERNAL_URL: "Link externo"
 };
+
+const categoryOptionsByModality: Record<string, string[]> = {
+  Musculação: ["Força", "Core", "Cardio"],
+  Mobilidade: ["Mobilidade de quadril", "Mobilidade torácica", "Mobilidade de ombro", "Mobilidade de tornozelo", "Mobilidade de coluna"],
+  Alongamento: ["Alongamento dinâmico", "Alongamento estático"],
+  Funcional: ["Funcional com peso corporal", "Funcional com acessórios", "Core", "Condicionamento"],
+  "Muay Thai": ["Técnica", "Condicionamento", "Mobilidade de quadril"],
+  Karatê: ["Técnica", "Condicionamento", "Mobilidade de quadril"],
+  "Condicionamento físico": ["Cardio", "Condicionamento", "Core"]
+};
+
+function categoriesForModality(modality: string, currentCategory?: string) {
+  const options = categoryOptionsByModality[modality] ?? [...exerciseCategories];
+  if (currentCategory && !options.includes(currentCategory)) {
+    return [currentCategory, ...options];
+  }
+  return options;
+}
+
+function mediaAccept(mediaType: ExerciseMediaType) {
+  if (mediaType === "VIDEO") return "video/*";
+  if (mediaType === "GIF") return "image/gif";
+  if (mediaType === "IMAGE") return "image/*";
+  return undefined;
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+const exercisePresets = [
+  {
+    label: "Mobilidade de quadril",
+    name: "Mobilidade de quadril",
+    modality: "Mobilidade",
+    category: "Mobilidade de quadril",
+    muscleGroup: "Quadril",
+    description: "Sequência curta para melhorar amplitude do quadril, controle articular e preparação para agachamentos, passadas e movimentos de luta.",
+    executionInstructions: "Execute de forma lenta e controlada, mantendo a respiração constante. Priorize amplitude confortável, sem dor, e aumente o alcance aos poucos.",
+    commonMistakes: "Compensar com a lombar, fazer movimentos rápidos demais ou forçar a articulação além do limite confortável.",
+    difficultyLevel: "INICIANTE"
+  },
+  {
+    label: "Mobilidade torácica",
+    name: "Mobilidade torácica",
+    modality: "Mobilidade",
+    category: "Mobilidade torácica",
+    muscleGroup: "Coluna torácica",
+    description: "Exercício para melhorar rotação e extensão torácica, ajudando postura, respiração e movimentos acima da cabeça.",
+    executionInstructions: "Mantenha o quadril estável e gire o tronco com controle. Acompanhe o movimento com o olhar e evite prender a respiração.",
+    commonMistakes: "Girar apenas o braço, perder estabilidade do quadril ou acelerar a execução.",
+    difficultyLevel: "INICIANTE"
+  },
+  {
+    label: "Funcional com peso corporal",
+    name: "Agachamento funcional",
+    modality: "Funcional",
+    category: "Funcional com peso corporal",
+    muscleGroup: "Pernas e core",
+    description: "Movimento funcional para força de membros inferiores, estabilidade de core e condicionamento geral.",
+    executionInstructions: "Mantenha pés firmes, joelhos alinhados e tronco estável. Desça até uma amplitude segura e suba pressionando o chão.",
+    commonMistakes: "Projetar joelhos para dentro, arredondar a lombar ou perder controle na descida.",
+    difficultyLevel: "INICIANTE"
+  }
+];
 
 function MediaPreview({ exercise }: { exercise: Pick<Exercise, "mediaType" | "mediaUrl" | "thumbnailUrl" | "name"> }) {
   if (!exercise.mediaUrl) {
@@ -139,6 +209,60 @@ export default function ExercisesPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function applyPreset(preset: (typeof exercisePresets)[number]) {
+    setForm((current) => ({
+      ...current,
+      name: preset.name,
+      category: preset.category,
+      modality: preset.modality,
+      muscleGroup: preset.muscleGroup,
+      description: preset.description,
+      executionInstructions: preset.executionInstructions,
+      commonMistakes: preset.commonMistakes,
+      difficultyLevel: preset.difficultyLevel
+    }));
+  }
+
+  function changeModality(modality: string) {
+    const options = categoriesForModality(modality);
+    setForm((current) => ({
+      ...current,
+      modality,
+      category: options.includes(current.category) ? current.category : options[0] ?? current.category
+    }));
+  }
+
+  function changeMediaType(mediaType: ExerciseMediaType) {
+    setForm((current) => ({
+      ...current,
+      mediaType,
+      mediaUrl: "",
+      thumbnailUrl: ""
+    }));
+  }
+
+  async function handleMediaFile(file?: File) {
+    if (!file) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setForm((current) => ({ ...current, mediaUrl: dataUrl }));
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível carregar o arquivo.");
+    }
+  }
+
+  async function handleThumbnailFile(file?: File) {
+    if (!file) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setForm((current) => ({ ...current, thumbnailUrl: dataUrl }));
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível carregar a thumbnail.");
+    }
+  }
+
   async function inactivateExercise(exercise: Exercise) {
     if (!window.confirm(`Inativar o exercício ${exercise.name}?`)) return;
     setError("");
@@ -166,20 +290,31 @@ export default function ExercisesPage() {
 
       <SectionCard className="mb-6 p-4">
         <form onSubmit={submit} className="grid gap-4 lg:grid-cols-4">
+          <div className="lg:col-span-4">
+            <p className="text-sm font-semibold text-ink">Modelos rápidos</p>
+            <p className="mt-1 text-sm text-muted">Use um modelo para preencher resumo, instruções e erros comuns. Depois envie o arquivo de mídia ou informe um link externo.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {exercisePresets.map((preset) => (
+                <Button key={preset.label} type="button" variant="secondary" className="h-9 px-3" onClick={() => applyPreset(preset)}>
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+          </div>
           <label className="text-sm font-medium text-gray-700">
             Nome do exercício
             <input className={fieldClass} value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
           </label>
           <label className="text-sm font-medium text-gray-700">
-            Categoria
-            <select className={fieldClass} value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value, modality: event.target.value }))}>
-              {exerciseCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+            Modalidade
+            <select className={fieldClass} value={form.modality} onChange={(event) => changeModality(event.target.value)}>
+              {exerciseModalities.map((modality) => <option key={modality} value={modality}>{modality}</option>)}
             </select>
           </label>
           <label className="text-sm font-medium text-gray-700">
-            Modalidade
-            <select className={fieldClass} value={form.modality} onChange={(event) => setForm((current) => ({ ...current, modality: event.target.value }))}>
-              {exerciseCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+            Categoria
+            <select className={fieldClass} value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}>
+              {categoriesForModality(form.modality, form.category).map((category) => <option key={category} value={category}>{category}</option>)}
             </select>
           </label>
           <label className="text-sm font-medium text-gray-700">
@@ -194,17 +329,36 @@ export default function ExercisesPage() {
           </label>
           <label className="text-sm font-medium text-gray-700">
             Tipo da mídia
-            <select className={fieldClass} value={form.mediaType} onChange={(event) => setForm((current) => ({ ...current, mediaType: event.target.value as ExerciseMediaType }))}>
+            <select className={fieldClass} value={form.mediaType} onChange={(event) => changeMediaType(event.target.value as ExerciseMediaType)}>
               {exerciseMediaTypes.map((type) => <option key={type} value={type}>{mediaTypeLabel[type]}</option>)}
             </select>
           </label>
-          <label className="text-sm font-medium text-gray-700 lg:col-span-2">
-            URL da mídia
-            <input className={fieldClass} value={form.mediaUrl} onChange={(event) => setForm((current) => ({ ...current, mediaUrl: event.target.value }))} placeholder="https://..." />
-          </label>
+          {form.mediaType === "EXTERNAL_URL" ? (
+            <label className="text-sm font-medium text-gray-700 lg:col-span-2">
+              Link externo
+              <input className={fieldClass} value={form.mediaUrl} onChange={(event) => setForm((current) => ({ ...current, mediaUrl: event.target.value }))} placeholder="https://..." />
+            </label>
+          ) : (
+            <label className="text-sm font-medium text-gray-700 lg:col-span-2">
+              Arquivo da mídia
+              <input
+                className={`${fieldClass} file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white`}
+                type="file"
+                accept={mediaAccept(form.mediaType)}
+                onChange={(event) => handleMediaFile(event.target.files?.[0])}
+              />
+              <span className="mt-1 block text-xs text-muted">{form.mediaUrl ? "Arquivo carregado. Confira o preview abaixo." : "Selecione um arquivo para vídeo, GIF ou imagem."}</span>
+            </label>
+          )}
           <label className="text-sm font-medium text-gray-700 lg:col-span-2">
             Thumbnail opcional
-            <input className={fieldClass} value={form.thumbnailUrl} onChange={(event) => setForm((current) => ({ ...current, thumbnailUrl: event.target.value }))} placeholder="https://..." />
+            <input
+              className={`${fieldClass} file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white`}
+              type="file"
+              accept="image/*"
+              onChange={(event) => handleThumbnailFile(event.target.files?.[0])}
+            />
+            <span className="mt-1 block text-xs text-muted">{form.thumbnailUrl ? "Thumbnail carregada." : "Imagem usada como capa do vídeo ou link externo."}</span>
           </label>
           <label className="flex items-end gap-2 text-sm font-medium text-gray-700">
             <input className="mb-3 h-4 w-4 rounded border-gray-300 text-brand" type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} />

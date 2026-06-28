@@ -120,6 +120,7 @@ export async function createEnrollment(payload: unknown, context: EnrollmentCont
         amount: input.invoice.amount,
         status: invoiceStatus,
         paidAt,
+        paymentMethod: invoiceStatus === "PAGO" ? "MANUAL" : null,
         totalPaid: invoiceStatus === "PAGO" ? input.invoice.amount : 0,
         fineAmount: 0,
         interestAmount: 0

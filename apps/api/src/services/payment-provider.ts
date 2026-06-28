@@ -60,11 +60,7 @@ function fallbackPayerEmail(email: string) {
 }
 
 class MockPixProvider implements PixProviderClient {
-  provider: PaymentProvider;
-
-  constructor(provider: PaymentProvider) {
-    this.provider = provider;
-  }
+  provider: PaymentProvider = "MOCK";
 
   async createPixCharge(input: PixChargeInput): Promise<PixChargeResult> {
     const providerPaymentId = `mock_${input.transactionId}`;
@@ -79,7 +75,7 @@ class MockPixProvider implements PixProviderClient {
       expiresAt: input.expiresAt,
       rawProviderResponse: {
         mode: "mock",
-        provider: this.provider,
+        provider: "MOCK",
         providerPaymentId,
         invoiceId: input.invoiceId
       }
@@ -87,10 +83,12 @@ class MockPixProvider implements PixProviderClient {
   }
 }
 
-class MercadoPagoPixProvider extends MockPixProvider {
+class MercadoPagoPixProvider implements PixProviderClient {
+  provider: PaymentProvider = "MERCADO_PAGO";
+
   async createPixCharge(input: PixChargeInput): Promise<PixChargeResult> {
-    if (env.PIX_PROVIDER_MODE === "mock" || !env.MERCADO_PAGO_ACCESS_TOKEN) {
-      return super.createPixCharge(input);
+    if (!env.MERCADO_PAGO_ACCESS_TOKEN) {
+      throw new Error("Mercado Pago não está configurado. Informe MERCADO_PAGO_ACCESS_TOKEN.");
     }
 
     const response = await fetch("https://api.mercadopago.com/v1/payments", {
@@ -139,11 +137,8 @@ class MercadoPagoPixProvider extends MockPixProvider {
   }
 
   async getPaymentStatus(providerPaymentId: string): Promise<PixPaymentStatusResult> {
-    if (env.PIX_PROVIDER_MODE === "mock" || !env.MERCADO_PAGO_ACCESS_TOKEN || providerPaymentId.startsWith("mock_")) {
-      return {
-        status: "PENDING",
-        rawProviderResponse: { mode: "mock", providerPaymentId }
-      };
+    if (!env.MERCADO_PAGO_ACCESS_TOKEN) {
+      throw new Error("Mercado Pago não está configurado. Informe MERCADO_PAGO_ACCESS_TOKEN.");
     }
 
     const response = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(providerPaymentId)}`, {
@@ -168,11 +163,9 @@ class MercadoPagoPixProvider extends MockPixProvider {
 }
 
 export function getPixProvider(): PixProviderClient {
-  const provider = env.PIX_PROVIDER;
-
-  if (provider === "MERCADO_PAGO") {
-    return new MercadoPagoPixProvider(provider);
+  if (env.PAYMENT_PROVIDER === "mercado_pago") {
+    return new MercadoPagoPixProvider();
   }
 
-  return new MockPixProvider(provider);
+  return new MockPixProvider();
 }
