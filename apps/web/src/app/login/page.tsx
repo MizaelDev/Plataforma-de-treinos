@@ -5,10 +5,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { Alert, Button, fieldClass } from "@/components/ui";
-import { getStoredUser, setSession } from "@/lib/api";
+import { getStoredUser, setSession, type SessionUser } from "@/lib/api";
 import { appConfig } from "@/lib/app-config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
+
+async function readApiPayload(response: Response) {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text) as { message?: string; token?: string; user?: SessionUser };
+  } catch {
+    return {};
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,9 +46,14 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password })
       });
 
-      const payload = await response.json();
+      const payload = await readApiPayload(response);
       if (!response.ok) {
         setError(payload.message ?? "Falha no login.");
+        return;
+      }
+
+      if (!payload.token || !payload.user) {
+        setError("Resposta inválida da API.");
         return;
       }
 
