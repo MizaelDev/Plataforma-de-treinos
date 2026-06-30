@@ -12,12 +12,17 @@ export const invoicesRouter = Router();
 
 invoicesRouter.use(requireAuth);
 
+const activeStudentFilter = {
+  status: "ATIVO" as const,
+  deletedAt: null
+};
+
 invoicesRouter.get(
   "/",
   requireRoles("ADMIN", "PROFESSOR"),
   asyncRoute(async (request, response) => {
     const invoices = await prisma.invoice.findMany({
-      where: { organizationId: request.user!.organizationId },
+      where: { organizationId: request.user!.organizationId, student: activeStudentFilter },
       include: {
         student: { select: { id: true, fullName: true, email: true } },
         plan: true,
@@ -43,7 +48,7 @@ invoicesRouter.post(
   asyncRoute(async (request, response) => {
     const data = invoiceSchema.parse(request.body);
     const student = await prisma.student.findFirst({
-      where: { id: data.studentId, organizationId: request.user!.organizationId, deletedAt: null }
+      where: { id: data.studentId, organizationId: request.user!.organizationId, ...activeStudentFilter }
     });
 
     if (!student) {
@@ -88,7 +93,7 @@ invoicesRouter.get(
   asyncRoute(async (request, response) => {
     const id = requiredParam(request, "id");
     const invoice = await prisma.invoice.findFirst({
-      where: { id, organizationId: request.user!.organizationId },
+      where: { id, organizationId: request.user!.organizationId, student: activeStudentFilter },
       include: {
         student: { select: { id: true, fullName: true, email: true } },
         plan: true,
@@ -116,7 +121,7 @@ invoicesRouter.post(
   asyncRoute(async (request, response) => {
     const { studentId, planId, startDate } = request.body as { studentId: string; planId: string; startDate?: string };
     const plan = await prisma.plan.findFirst({ where: { id: planId, organizationId: request.user!.organizationId, deletedAt: null } });
-    const student = await prisma.student.findFirst({ where: { id: studentId, organizationId: request.user!.organizationId, deletedAt: null } });
+    const student = await prisma.student.findFirst({ where: { id: studentId, organizationId: request.user!.organizationId, ...activeStudentFilter } });
 
     if (!plan || !student) {
       response.status(404).json({ message: "Aluno ou plano não encontrado." });
@@ -155,7 +160,7 @@ invoicesRouter.patch(
     const id = requiredParam(request, "id");
     const data = invoiceSchema.partial().parse(request.body);
     const existingInvoice = await prisma.invoice.findFirst({
-      where: { id, organizationId: request.user!.organizationId },
+      where: { id, organizationId: request.user!.organizationId, student: activeStudentFilter },
       include: { plan: true }
     });
 
@@ -166,7 +171,7 @@ invoicesRouter.patch(
 
     if (data.studentId) {
       const student = await prisma.student.findFirst({
-        where: { id: data.studentId, organizationId: request.user!.organizationId, deletedAt: null },
+        where: { id: data.studentId, organizationId: request.user!.organizationId, ...activeStudentFilter },
         select: { id: true }
       });
 
@@ -246,7 +251,7 @@ invoicesRouter.post(
   asyncRoute(async (request, response) => {
     const id = requiredParam(request, "id");
     const invoice = await prisma.invoice.findFirst({
-      where: { id, organizationId: request.user!.organizationId },
+      where: { id, organizationId: request.user!.organizationId, student: activeStudentFilter },
       include: { plan: true }
     });
 
@@ -281,7 +286,7 @@ invoicesRouter.delete(
   asyncRoute(async (request, response) => {
     const id = requiredParam(request, "id");
     const invoice = await prisma.invoice.findFirst({
-      where: { id, organizationId: request.user!.organizationId },
+      where: { id, organizationId: request.user!.organizationId, student: activeStudentFilter },
       select: { id: true }
     });
 
@@ -311,8 +316,18 @@ invoicesRouter.delete(
   requireRoles("ADMIN", "PROFESSOR"),
   asyncRoute(async (request, response) => {
     const id = requiredParam(request, "id");
+    const existingInvoice = await prisma.invoice.findFirst({
+      where: { id, organizationId: request.user!.organizationId, student: activeStudentFilter },
+      select: { id: true }
+    });
+
+    if (!existingInvoice) {
+      response.status(404).json({ message: "Mensalidade não encontrada." });
+      return;
+    }
+
     const invoice = await prisma.invoice.update({
-      where: { id, organizationId: request.user!.organizationId },
+      where: { id: existingInvoice.id },
       data: { status: "CANCELADO" }
     });
 

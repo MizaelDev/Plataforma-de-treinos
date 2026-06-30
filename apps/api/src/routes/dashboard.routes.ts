@@ -8,6 +8,11 @@ export const dashboardRouter = Router();
 
 dashboardRouter.use(requireAuth);
 
+const activeStudentFilter = {
+  status: "ATIVO" as const,
+  deletedAt: null
+};
+
 dashboardRouter.get(
   "/admin",
   requireRoles("ADMIN", "PROFESSOR"),
@@ -21,21 +26,21 @@ dashboardRouter.get(
 
     const [activeStudents, dueSoon, overdue, monthRevenue, delinquentStudents, dueSoonInvoices, delinquentStudentRows, latestPayments, latestStudents] = await Promise.all([
       prisma.student.count({ where: { organizationId, status: "ATIVO", deletedAt: null } }),
-      prisma.invoice.count({ where: { organizationId, status: "PENDENTE", dueDate: { gte: now, lte: inSevenDays } } }),
-      prisma.invoice.count({ where: { organizationId, status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: now } } }),
+      prisma.invoice.count({ where: { organizationId, student: activeStudentFilter, status: "PENDENTE", dueDate: { gte: now, lte: inSevenDays } } }),
+      prisma.invoice.count({ where: { organizationId, student: activeStudentFilter, status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: now } } }),
       prisma.invoice.aggregate({
-        where: { organizationId, status: "PAGO", paidAt: { gte: firstDayOfMonth, lt: firstDayNextMonth } },
+        where: { organizationId, student: activeStudentFilter, status: "PAGO", paidAt: { gte: firstDayOfMonth, lt: firstDayNextMonth } },
         _sum: { totalPaid: true }
       }),
       prisma.student.count({
         where: {
           organizationId,
-          deletedAt: null,
+          ...activeStudentFilter,
           invoices: { some: { status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: now } } }
         }
       }),
       prisma.invoice.findMany({
-        where: { organizationId, status: "PENDENTE", dueDate: { gte: now, lte: inSevenDays } },
+        where: { organizationId, student: activeStudentFilter, status: "PENDENTE", dueDate: { gte: now, lte: inSevenDays } },
         include: { student: { select: { id: true, fullName: true } }, plan: { select: { id: true, name: true } } },
         orderBy: { dueDate: "asc" },
         take: 6
@@ -43,7 +48,7 @@ dashboardRouter.get(
       prisma.student.findMany({
         where: {
           organizationId,
-          deletedAt: null,
+          ...activeStudentFilter,
           invoices: { some: { status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: now } } }
         },
         select: {
@@ -61,13 +66,13 @@ dashboardRouter.get(
         take: 6
       }),
       prisma.invoice.findMany({
-        where: { organizationId, status: "PAGO", paidAt: { not: null } },
+        where: { organizationId, student: activeStudentFilter, status: "PAGO", paidAt: { not: null } },
         include: { student: { select: { id: true, fullName: true } }, plan: { select: { id: true, name: true } } },
         orderBy: { paidAt: "desc" },
         take: 6
       }),
       prisma.student.findMany({
-        where: { organizationId, deletedAt: null },
+        where: { organizationId, ...activeStudentFilter },
         select: { id: true, fullName: true, modality: true, enrollmentDate: true, status: true },
         orderBy: { createdAt: "desc" },
         take: 6
