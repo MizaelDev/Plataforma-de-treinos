@@ -90,7 +90,7 @@ export default function SettingsPage() {
       <header className="mb-6">
         <p className="text-sm font-semibold text-brand">Administração</p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">Configurações</h1>
-        <p className="mt-1 text-sm text-muted">Ajustes financeiros usados no calculo de mensalidades em atraso.</p>
+        <p className="mt-1 text-sm text-muted">Ajustes financeiros usados no cálculo de mensalidades em atraso.</p>
       </header>
 
       {error && <Alert type="error" message={error} />}

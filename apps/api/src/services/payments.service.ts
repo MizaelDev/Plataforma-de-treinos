@@ -41,7 +41,7 @@ function providerFromParam(provider: string): PaymentProvider {
   const normalized = provider.trim().toUpperCase().replace("-", "_");
   const providerName = normalized === "MERCADOPAGO" ? "MERCADO_PAGO" : normalized;
   if (providerName !== "MOCK" && providerName !== "MERCADO_PAGO" && providerName !== "ASAAS" && providerName !== "EFI") {
-    throw new AppError(400, "Provedor de pagamento invÃ¡lido.");
+    throw new AppError(400, "Provedor de pagamento inválido.");
   }
   return providerName;
 }
@@ -92,15 +92,15 @@ export async function createPixPayment(invoiceId: string, context: ActorContext)
   });
 
   if (!invoice) {
-    throw new AppError(404, "Mensalidade nÃ£o encontrada para este usuÃ¡rio.");
+    throw new AppError(404, "Mensalidade não encontrada para este usuário.");
   }
 
   if (invoice.status === "PAGO") {
-    throw new AppError(400, "Esta mensalidade jÃ¡ estÃ¡ paga.");
+    throw new AppError(400, "Esta mensalidade já está paga.");
   }
 
   if (invoice.status === "CANCELADO") {
-    throw new AppError(400, "NÃ£o Ã© possÃ­vel pagar uma mensalidade cancelada.");
+    throw new AppError(400, "Não é possível pagar uma mensalidade cancelada.");
   }
 
   const pendingTransaction = invoice.paymentTransactions[0];
@@ -199,7 +199,7 @@ export async function getPaymentStatus(transactionId: string, context: ActorCont
   });
 
   if (!transaction) {
-    throw new AppError(404, "Pagamento nÃ£o encontrado.");
+    throw new AppError(404, "Pagamento não encontrado.");
   }
 
   if (transaction.status === "PENDING" && transaction.expiresAt && transaction.expiresAt < new Date()) {
@@ -226,7 +226,7 @@ export async function getPaymentStatus(transactionId: string, context: ActorCont
 
 export async function mockConfirmPayment(transactionId: string, context: ActorContext) {
   if (env.NODE_ENV === "production" || env.PAYMENT_PROVIDER !== "mock") {
-    throw new AppError(403, "ConfirmaÃ§Ã£o mock disponÃ­vel apenas em desenvolvimento.");
+    throw new AppError(403, "Confirmação mock disponível apenas em desenvolvimento.");
   }
 
   const transaction = await prisma.paymentTransaction.findFirst({
@@ -239,7 +239,7 @@ export async function mockConfirmPayment(transactionId: string, context: ActorCo
   });
 
   if (!transaction) {
-    throw new AppError(404, "Pagamento nÃ£o encontrado.");
+    throw new AppError(404, "Pagamento não encontrado.");
   }
 
   const paidTransaction = await confirmPaymentTransaction({
@@ -278,7 +278,7 @@ export async function confirmPaymentTransaction(input: {
   });
 
   if (!transaction) {
-    throw new AppError(404, "TransaÃ§Ã£o de pagamento nÃ£o encontrada.");
+    throw new AppError(404, "Transação de pagamento não encontrada.");
   }
 
   if (transaction.status === "PAID") {

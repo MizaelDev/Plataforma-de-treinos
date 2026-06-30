@@ -256,7 +256,7 @@ export default function StudentDetailPage() {
       {loading ? (
         <LoadingState />
       ) : !student ? (
-        <EmptyState title="Aluno não encontrado" description="O aluno solicitado não existe ou não esta disponível." />
+        <EmptyState title="Aluno não encontrado" description="O aluno solicitado não existe ou não está disponível." />
       ) : (
         <>
           <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -371,7 +371,7 @@ export default function StudentDetailPage() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-sm font-semibold text-ink">Evolução física</p>
-                <p className="mt-1 text-sm text-muted">Resumo da última avaliação e variação em relação a anterior.</p>
+                <p className="mt-1 text-sm text-muted">Resumo da última avaliação e variação em relação à anterior.</p>
               </div>
               <QuickAction href={`/assessments?studentId=${student.id}`} label="Nova avaliação" icon={Activity} />
             </div>

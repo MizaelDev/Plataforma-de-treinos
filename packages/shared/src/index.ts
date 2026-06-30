@@ -168,13 +168,13 @@ export const studentPlanChangeSchema = z.object({
 
 export const financialSettingsSchema = z.object({
   fixedFinePercentage: brNumber(
-    z.number({ required_error: "Informe a multa fixa.", invalid_type_error: "Informe a multa fixa." }).min(0, "Multa não pode ser negativa.").max(100, "Multa maxima: 100%.")
+    z.number({ required_error: "Informe a multa fixa.", invalid_type_error: "Informe a multa fixa." }).min(0, "Multa não pode ser negativa.").max(100, "Multa máxima: 100%.")
   ),
   dailyInterestPercentage: brNumber(
-    z.number({ required_error: "Informe o juros ao dia.", invalid_type_error: "Informe o juros ao dia." }).min(0, "Juros ao dia não pode ser negativo.").max(100, "Juros ao dia máximo: 100%.")
+    z.number({ required_error: "Informe os juros ao dia.", invalid_type_error: "Informe os juros ao dia." }).min(0, "Juros ao dia não podem ser negativos.").max(100, "Juros ao dia máximo: 100%.")
   ),
   monthlyInterestPercentage: brNumber(
-    z.number({ required_error: "Informe o juros ao mês.", invalid_type_error: "Informe o juros ao mês." }).min(0, "Juros ao mês não pode ser negativo.").max(100, "Juros ao mês máximo: 100%.")
+    z.number({ required_error: "Informe os juros ao mês.", invalid_type_error: "Informe os juros ao mês." }).min(0, "Juros ao mês não podem ser negativos.").max(100, "Juros ao mês máximo: 100%.")
   )
 });
 

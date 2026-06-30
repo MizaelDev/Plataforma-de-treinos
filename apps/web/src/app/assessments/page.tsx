@@ -347,7 +347,7 @@ export default function AssessmentsPage() {
       <header className="mb-6">
         <p className="text-sm font-semibold text-brand">Evolução</p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">Avaliações físicas</h1>
-        <p className="mt-1 text-sm text-muted">Registre uma avaliação completa em etapas, sem pesar o cadastro basico do aluno.</p>
+        <p className="mt-1 text-sm text-muted">Registre uma avaliação completa em etapas, sem pesar o cadastro básico do aluno.</p>
       </header>
 
       {error && <Alert type="error" message={error} />}
@@ -433,7 +433,7 @@ export default function AssessmentsPage() {
           )}
 
           {activeStep === "skinfolds" && (
-            <FieldGroup title="Dobras cutâneas" description="Medidas em milímetros. A data usada será a mesma data da avaliação informada na primeira etapa. Campos vazios seráo ignorados.">
+            <FieldGroup title="Dobras cutâneas" description="Medidas em milímetros. A data usada será a mesma data da avaliação informada na primeira etapa. Campos vazios serão ignorados.">
               {renderGroupFields("skinfolds", skinfoldFields, " (mm)")}
             </FieldGroup>
           )}

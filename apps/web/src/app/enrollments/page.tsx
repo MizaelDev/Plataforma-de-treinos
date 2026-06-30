@@ -192,8 +192,8 @@ export default function EnrollmentsPage() {
         <SectionCard className="mb-5 p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-ink">Aluno matrículado</p>
-              <p className="mt-1 text-sm text-muted">A avaliação física completa pode ser preenchida agora, mas tambem fica disponível depois no perfil do aluno.</p>
+              <p className="text-sm font-semibold text-ink">Aluno matriculado</p>
+              <p className="mt-1 text-sm text-muted">A avaliação física completa pode ser preenchida agora, mas também fica disponível depois no perfil do aluno.</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button type="button" onClick={() => router.push(`/assessments?studentId=${createdStudentId}`)}>
