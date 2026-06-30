@@ -10,6 +10,10 @@ function optionalText(value?: string | null) {
   return value?.trim() || null;
 }
 
+function optionalNumber(value?: number | "" | null) {
+  return value === "" || value === null || value === undefined ? null : value;
+}
+
 function buildExerciseData(input: ExerciseLibraryInput, context: ExerciseContext) {
   if (!context.organizationId) {
     throw new AppError(401, "Sessão inválida. Faça login novamente.");
@@ -26,8 +30,12 @@ function buildExerciseData(input: ExerciseLibraryInput, context: ExerciseContext
     commonMistakes: optionalText(input.commonMistakes),
     difficultyLevel: input.difficultyLevel,
     mediaType: input.mediaType,
-    mediaUrl: input.mediaUrl.trim(),
+    mediaUrl: optionalText(input.mediaUrl),
     thumbnailUrl: optionalText(input.thumbnailUrl),
+    videoProvider: input.videoProvider,
+    durationSeconds: optionalNumber(input.durationSeconds),
+    fileSize: optionalNumber(input.fileSize),
+    mimeType: optionalText(input.mimeType),
     isActive: input.isActive
   };
 }

@@ -1,12 +1,13 @@
 ﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { exerciseCategories, exerciseDifficultyLevels, exerciseMediaTypes, exerciseModalities } from "@academia/shared";
+import { exerciseCategories, exerciseDifficultyLevels, exerciseMediaTypes, exerciseModalities, mediaProviders } from "@academia/shared";
 import { AppShell } from "@/components/app-shell";
 import { Alert, Button, EmptyState, LoadingState, MobileRecordCard, SectionCard, StatusBadge, TableToolbar, fieldClass, textareaClass } from "@/components/ui";
 import { api } from "@/lib/api";
 
-type ExerciseMediaType = "IMAGE" | "GIF" | "VIDEO" | "EXTERNAL_URL";
+type ExerciseMediaType = "IMAGE" | "GIF" | "VIDEO" | "EXTERNAL_URL" | "EMBED";
+type MediaProvider = "YOUTUBE" | "VIMEO" | "BUNNY" | "SUPABASE" | "R2" | "EXTERNAL" | "NONE";
 type Exercise = {
   id: string;
   name: string;
@@ -18,8 +19,12 @@ type Exercise = {
   commonMistakes?: string | null;
   difficultyLevel: string;
   mediaType: ExerciseMediaType;
-  mediaUrl: string;
+  mediaUrl?: string | null;
   thumbnailUrl?: string | null;
+  videoProvider: MediaProvider;
+  durationSeconds?: number | string | null;
+  fileSize?: number | string | null;
+  mimeType?: string | null;
   isActive: boolean;
 };
 
@@ -35,6 +40,10 @@ const initialForm = () => ({
   mediaType: "VIDEO" as ExerciseMediaType,
   mediaUrl: "",
   thumbnailUrl: "",
+  videoProvider: "EXTERNAL" as MediaProvider,
+  durationSeconds: "",
+  fileSize: "",
+  mimeType: "",
   isActive: true
 });
 
@@ -42,7 +51,18 @@ const mediaTypeLabel: Record<ExerciseMediaType, string> = {
   IMAGE: "Imagem",
   GIF: "GIF",
   VIDEO: "Vídeo",
-  EXTERNAL_URL: "Link externo"
+  EXTERNAL_URL: "Link externo",
+  EMBED: "Embed"
+};
+
+const providerLabel: Record<MediaProvider, string> = {
+  YOUTUBE: "YouTube",
+  VIMEO: "Vimeo",
+  BUNNY: "Bunny.net",
+  SUPABASE: "Supabase Storage",
+  R2: "Cloudflare R2",
+  EXTERNAL: "URL externa",
+  NONE: "Sem provedor"
 };
 
 const categoryOptionsByModality: Record<string, string[]> = {
@@ -61,22 +81,6 @@ function categoriesForModality(modality: string, currentCategory?: string) {
     return [currentCategory, ...options];
   }
   return options;
-}
-
-function mediaAccept(mediaType: ExerciseMediaType) {
-  if (mediaType === "VIDEO") return "video/*";
-  if (mediaType === "GIF") return "image/gif";
-  if (mediaType === "IMAGE") return "image/*";
-  return undefined;
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
-    reader.readAsDataURL(file);
-  });
 }
 
 const exercisePresets = [
@@ -115,17 +119,40 @@ const exercisePresets = [
   }
 ];
 
-function MediaPreview({ exercise }: { exercise: Pick<Exercise, "mediaType" | "mediaUrl" | "thumbnailUrl" | "name"> }) {
+function embedUrl(mediaUrl?: string | null, provider?: MediaProvider) {
+  if (!mediaUrl) return "";
+  try {
+    const url = new URL(mediaUrl);
+    if (provider === "YOUTUBE" || url.hostname.includes("youtube.com") || url.hostname.includes("youtu.be")) {
+      const id = url.hostname.includes("youtu.be") ? url.pathname.slice(1) : url.searchParams.get("v");
+      return id ? `https://www.youtube.com/embed/${id}` : mediaUrl;
+    }
+    if (provider === "VIMEO" || url.hostname.includes("vimeo.com")) {
+      const id = url.pathname.split("/").filter(Boolean).pop();
+      return id ? `https://player.vimeo.com/video/${id}` : mediaUrl;
+    }
+  } catch {
+    return "";
+  }
+  return mediaUrl;
+}
+
+function MediaPreview({ exercise }: { exercise: Pick<Exercise, "mediaType" | "mediaUrl" | "thumbnailUrl" | "name" | "videoProvider"> }) {
   if (!exercise.mediaUrl) {
-    return <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 text-sm text-muted">Sem mídia</div>;
+    return <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 text-sm text-muted">Sem mídia cadastrada</div>;
   }
 
   if (exercise.mediaType === "IMAGE" || exercise.mediaType === "GIF") {
-    return <img src={exercise.mediaUrl} alt={exercise.name} className="h-32 w-full rounded-md border border-gray-200 object-cover" />;
+    return <img src={exercise.mediaUrl} alt={exercise.name} loading="lazy" className="h-32 w-full rounded-md border border-gray-200 object-cover" />;
   }
 
   if (exercise.mediaType === "VIDEO") {
     return <video src={exercise.mediaUrl} poster={exercise.thumbnailUrl ?? undefined} controls className="h-32 w-full rounded-md border border-gray-200 bg-black object-cover" />;
+  }
+
+  if (exercise.mediaType === "EMBED") {
+    const src = embedUrl(exercise.mediaUrl, exercise.videoProvider);
+    return src ? <iframe src={src} title={exercise.name} loading="lazy" className="h-32 w-full rounded-md border border-gray-200 bg-black" allow="fullscreen; picture-in-picture" /> : null;
   }
 
   return (
@@ -202,8 +229,12 @@ export default function ExercisesPage() {
       commonMistakes: exercise.commonMistakes ?? "",
       difficultyLevel: exercise.difficultyLevel,
       mediaType: exercise.mediaType,
-      mediaUrl: exercise.mediaUrl,
+      mediaUrl: exercise.mediaUrl ?? "",
       thumbnailUrl: exercise.thumbnailUrl ?? "",
+      videoProvider: exercise.videoProvider ?? "NONE",
+      durationSeconds: exercise.durationSeconds ? String(exercise.durationSeconds) : "",
+      fileSize: exercise.fileSize ? String(exercise.fileSize) : "",
+      mimeType: exercise.mimeType ?? "",
       isActive: exercise.isActive
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -237,30 +268,9 @@ export default function ExercisesPage() {
       ...current,
       mediaType,
       mediaUrl: "",
-      thumbnailUrl: ""
+      thumbnailUrl: "",
+      videoProvider: mediaType === "IMAGE" || mediaType === "GIF" ? "EXTERNAL" : current.videoProvider
     }));
-  }
-
-  async function handleMediaFile(file?: File) {
-    if (!file) return;
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setForm((current) => ({ ...current, mediaUrl: dataUrl }));
-      setError("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar o arquivo.");
-    }
-  }
-
-  async function handleThumbnailFile(file?: File) {
-    if (!file) return;
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setForm((current) => ({ ...current, thumbnailUrl: dataUrl }));
-      setError("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar a thumbnail.");
-    }
   }
 
   async function inactivateExercise(exercise: Exercise) {
@@ -292,7 +302,7 @@ export default function ExercisesPage() {
         <form onSubmit={submit} className="grid gap-4 lg:grid-cols-4">
           <div className="lg:col-span-4">
             <p className="text-sm font-semibold text-ink">Modelos rápidos</p>
-            <p className="mt-1 text-sm text-muted">Use um modelo para preencher resumo, instruções e erros comuns. Depois envie o arquivo de mídia ou informe um link externo.</p>
+            <p className="mt-1 text-sm text-muted">Use um modelo para preencher resumo, instruções e erros comuns. Hospede vídeos, GIFs e imagens fora do sistema e informe apenas as URLs.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {exercisePresets.map((preset) => (
                 <Button key={preset.label} type="button" variant="secondary" className="h-9 px-3" onClick={() => applyPreset(preset)}>
@@ -333,32 +343,33 @@ export default function ExercisesPage() {
               {exerciseMediaTypes.map((type) => <option key={type} value={type}>{mediaTypeLabel[type]}</option>)}
             </select>
           </label>
-          {form.mediaType === "EXTERNAL_URL" ? (
-            <label className="text-sm font-medium text-gray-700 lg:col-span-2">
-              Link externo
-              <input className={fieldClass} value={form.mediaUrl} onChange={(event) => setForm((current) => ({ ...current, mediaUrl: event.target.value }))} placeholder="https://..." />
-            </label>
-          ) : (
-            <label className="text-sm font-medium text-gray-700 lg:col-span-2">
-              Arquivo da mídia
-              <input
-                className={`${fieldClass} file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white`}
-                type="file"
-                accept={mediaAccept(form.mediaType)}
-                onChange={(event) => handleMediaFile(event.target.files?.[0])}
-              />
-              <span className="mt-1 block text-xs text-muted">{form.mediaUrl ? "Arquivo carregado. Confira o preview abaixo." : "Selecione um arquivo para vídeo, GIF ou imagem."}</span>
-            </label>
-          )}
+          <label className="text-sm font-medium text-gray-700">
+            Provedor
+            <select className={fieldClass} value={form.videoProvider} onChange={(event) => setForm((current) => ({ ...current, videoProvider: event.target.value as MediaProvider }))}>
+              {mediaProviders.map((provider) => <option key={provider} value={provider}>{providerLabel[provider]}</option>)}
+            </select>
+          </label>
           <label className="text-sm font-medium text-gray-700 lg:col-span-2">
-            Thumbnail opcional
-            <input
-              className={`${fieldClass} file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white`}
-              type="file"
-              accept="image/*"
-              onChange={(event) => handleThumbnailFile(event.target.files?.[0])}
-            />
-            <span className="mt-1 block text-xs text-muted">{form.thumbnailUrl ? "Thumbnail carregada." : "Imagem usada como capa do vídeo ou link externo."}</span>
+            URL da mídia
+            <input className={fieldClass} value={form.mediaUrl} onChange={(event) => setForm((current) => ({ ...current, mediaUrl: event.target.value }))} placeholder="https://youtube.com/... ou https://cdn.../video.mp4" />
+            <span className="mt-1 block text-xs text-muted">Não envie arquivos para o Railway. Use YouTube não listado, Vimeo, Bunny, R2, Supabase Storage ou URL pública.</span>
+          </label>
+          <label className="text-sm font-medium text-gray-700 lg:col-span-2">
+            Thumbnail URL opcional
+            <input className={fieldClass} value={form.thumbnailUrl} onChange={(event) => setForm((current) => ({ ...current, thumbnailUrl: event.target.value }))} placeholder="https://.../thumbnail.jpg" />
+            <span className="mt-1 block text-xs text-muted">Use uma imagem leve para capa em listas e cards.</span>
+          </label>
+          <label className="text-sm font-medium text-gray-700">
+            Duração (segundos)
+            <input className={fieldClass} value={form.durationSeconds} onChange={(event) => setForm((current) => ({ ...current, durationSeconds: event.target.value }))} placeholder="120" />
+          </label>
+          <label className="text-sm font-medium text-gray-700">
+            Tamanho (bytes)
+            <input className={fieldClass} value={form.fileSize} onChange={(event) => setForm((current) => ({ ...current, fileSize: event.target.value }))} placeholder="Opcional" />
+          </label>
+          <label className="text-sm font-medium text-gray-700">
+            MIME type
+            <input className={fieldClass} value={form.mimeType} onChange={(event) => setForm((current) => ({ ...current, mimeType: event.target.value }))} placeholder="video/mp4" />
           </label>
           <label className="flex items-end gap-2 text-sm font-medium text-gray-700">
             <input className="mb-3 h-4 w-4 rounded border-gray-300 text-brand" type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} />

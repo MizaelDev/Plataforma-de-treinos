@@ -6,7 +6,8 @@ import { Alert, Button, EmptyState, LoadingState, MobileRecordCard, SectionCard,
 import { api } from "@/lib/api";
 
 type Student = { id: string; fullName: string };
-type ExerciseMediaType = "IMAGE" | "GIF" | "VIDEO" | "EXTERNAL_URL";
+type ExerciseMediaType = "IMAGE" | "GIF" | "VIDEO" | "EXTERNAL_URL" | "EMBED";
+type MediaProvider = "YOUTUBE" | "VIMEO" | "BUNNY" | "SUPABASE" | "R2" | "EXTERNAL" | "NONE";
 type LibraryExercise = {
   id: string;
   name: string;
@@ -18,8 +19,11 @@ type LibraryExercise = {
   commonMistakes?: string | null;
   difficultyLevel: string;
   mediaType: ExerciseMediaType;
-  mediaUrl: string;
+  mediaUrl?: string | null;
   thumbnailUrl?: string | null;
+  videoProvider?: MediaProvider | null;
+  durationSeconds?: number | string | null;
+  mimeType?: string | null;
 };
 type ExerciseForm = {
   libraryExerciseId: string;

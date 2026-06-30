@@ -101,9 +101,12 @@ export type ExerciseSummary = {
     description?: string | null;
     executionInstructions?: string | null;
     commonMistakes?: string | null;
-    mediaType: "IMAGE" | "GIF" | "VIDEO" | "EXTERNAL_URL";
-    mediaUrl: string;
+    mediaType: "IMAGE" | "GIF" | "VIDEO" | "EXTERNAL_URL" | "EMBED";
+    mediaUrl?: string | null;
     thumbnailUrl?: string | null;
+    videoProvider?: "YOUTUBE" | "VIMEO" | "BUNNY" | "SUPABASE" | "R2" | "EXTERNAL" | "NONE" | null;
+    durationSeconds?: number | string | null;
+    mimeType?: string | null;
   } | null;
 };
 

@@ -152,6 +152,54 @@ Para sandbox Mercado Pago:
 
 O pagamento manual continua disponível para admin/professor.
 
+## Mídias de exercícios e aulas
+
+Vídeos, GIFs e imagens não devem ser armazenados no Railway nem no PostgreSQL. O banco salva apenas URLs e metadados, como tipo da mídia, provedor, thumbnail, duração, MIME type e tamanho.
+
+Para demonstração, use:
+
+- YouTube não listado
+- Vimeo
+- URL pública de imagem, GIF ou MP4
+
+Para produção, recomenda-se:
+
+- Bunny.net Stream para vídeos de aulas/cursos
+- Cloudflare R2 ou S3 para arquivos
+- Supabase Storage para começar com configuração simples
+- Vimeo quando precisar de controle maior no player
+
+Para cadastrar uma mídia na Biblioteca de Exercícios:
+
+1. Acesse `Biblioteca`.
+2. Escolha `Tipo da mídia`: imagem, GIF, vídeo, link externo ou embed.
+3. Escolha o `Provedor`: YouTube, Vimeo, Bunny, R2, Supabase, URL externa ou nenhum.
+4. Informe a `URL da mídia`.
+5. Informe uma `Thumbnail URL` quando possível.
+6. Salve e use o exercício na ficha de treino.
+
+Para cadastrar vídeo de aula/curso pela API, use `POST /courses` com `lessons` contendo:
+
+```json
+{
+  "title": "Curso de mobilidade",
+  "description": "Aulas curtas de mobilidade",
+  "lessons": [
+    {
+      "title": "Mobilidade de quadril",
+      "videoUrl": "https://www.youtube.com/watch?v=VIDEO_ID",
+      "thumbnailUrl": "https://cdn.exemplo.com/thumb.jpg",
+      "videoProvider": "YOUTUBE",
+      "durationSeconds": 180,
+      "isPreview": true,
+      "order": 1
+    }
+  ]
+}
+```
+
+Alunos apenas visualizam as mídias vinculadas aos próprios treinos. Chaves de storage nunca devem ir para o frontend.
+
 ## RedefiniÃ§Ã£o de senha
 
 O login possui `Esqueci minha senha`. O aluno tambÃ©m recebe link para definir a senha quando o acesso Ã© criado.

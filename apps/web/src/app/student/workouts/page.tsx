@@ -44,6 +44,7 @@ function ExerciseCard({ exercise, index, onOpen }: { exercise: ExerciseSummary; 
             mediaType={library?.mediaType}
             mediaUrl={library?.mediaUrl}
             thumbnailUrl={library?.thumbnailUrl}
+            videoProvider={library?.videoProvider}
             onOpen={() => onOpen(exercise)}
           />
         </div>
@@ -121,6 +122,7 @@ function ExerciseDetailsModal({ exercise, onClose }: { exercise: ExerciseSummary
             mediaType={library?.mediaType}
             mediaUrl={library?.mediaUrl}
             thumbnailUrl={library?.thumbnailUrl}
+            videoProvider={library?.videoProvider}
           />
 
           <div className="space-y-4">

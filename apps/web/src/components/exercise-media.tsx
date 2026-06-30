@@ -3,18 +3,38 @@
 import { ExternalLink, ImageIcon, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui";
 
-export type ExerciseMediaType = "IMAGE" | "GIF" | "VIDEO" | "EXTERNAL_URL";
+export type ExerciseMediaType = "IMAGE" | "GIF" | "VIDEO" | "EXTERNAL_URL" | "EMBED";
+export type MediaProvider = "YOUTUBE" | "VIMEO" | "BUNNY" | "SUPABASE" | "R2" | "EXTERNAL" | "NONE";
 
 type ExerciseMediaProps = {
   mediaType?: ExerciseMediaType | null;
   mediaUrl?: string | null;
   thumbnailUrl?: string | null;
+  videoProvider?: MediaProvider | null;
   title: string;
   compact?: boolean;
   onOpen?: () => void;
 };
 
-export function ExerciseMedia({ mediaType, mediaUrl, thumbnailUrl, title, compact = false, onOpen }: ExerciseMediaProps) {
+function embedUrl(mediaUrl?: string | null, provider?: MediaProvider | null) {
+  if (!mediaUrl) return "";
+  try {
+    const url = new URL(mediaUrl);
+    if (provider === "YOUTUBE" || url.hostname.includes("youtube.com") || url.hostname.includes("youtu.be")) {
+      const id = url.hostname.includes("youtu.be") ? url.pathname.slice(1) : url.searchParams.get("v");
+      return id ? `https://www.youtube.com/embed/${id}` : mediaUrl;
+    }
+    if (provider === "VIMEO" || url.hostname.includes("vimeo.com")) {
+      const id = url.pathname.split("/").filter(Boolean).pop();
+      return id ? `https://player.vimeo.com/video/${id}` : mediaUrl;
+    }
+  } catch {
+    return "";
+  }
+  return mediaUrl;
+}
+
+export function ExerciseMedia({ mediaType, mediaUrl, thumbnailUrl, videoProvider, title, compact = false, onOpen }: ExerciseMediaProps) {
   const heightClass = compact ? "h-44 sm:h-48" : "h-64 sm:h-80";
   const wrapperClass = "overflow-hidden rounded-lg border border-[#3a2a20] bg-[#100d0b]";
 
@@ -30,17 +50,48 @@ export function ExerciseMedia({ mediaType, mediaUrl, thumbnailUrl, title, compac
   if (mediaType === "IMAGE" || mediaType === "GIF") {
     return (
       <button type="button" onClick={onOpen} className={`${wrapperClass} group block w-full text-left`}>
-        <img src={mediaUrl} alt={title} className={`${heightClass} w-full object-cover transition group-hover:scale-[1.02]`} />
+        <img src={mediaUrl} alt={title} loading="lazy" className={`${heightClass} w-full object-cover transition group-hover:scale-[1.02]`} />
       </button>
     );
   }
 
   if (mediaType === "VIDEO") {
+    if (compact && thumbnailUrl) {
+      return (
+        <button type="button" onClick={onOpen} className={`${wrapperClass} group relative block w-full text-left`}>
+          <img src={thumbnailUrl} alt={title} loading="lazy" className={`${heightClass} w-full object-cover opacity-80 transition group-hover:scale-[1.02]`} />
+          <PlayCircle className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow" />
+        </button>
+      );
+    }
+
     return (
       <div className={wrapperClass}>
         <video src={mediaUrl} poster={thumbnailUrl ?? undefined} controls className={`${heightClass} w-full object-contain`} />
       </div>
     );
+  }
+
+  if (mediaType === "EMBED") {
+    const src = embedUrl(mediaUrl, videoProvider);
+    if (compact || thumbnailUrl) {
+      return (
+        <button type="button" onClick={onOpen} className={`relative flex ${heightClass} w-full flex-col items-center justify-center overflow-hidden rounded-lg border border-[#3a2a20] bg-[#18110d] px-4 text-center`}>
+          {thumbnailUrl ? <img src={thumbnailUrl} alt={title} loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-60" /> : null}
+          <div className="relative rounded-md border border-white/10 bg-[#100d0b]/95 p-3 shadow-sm">
+            <PlayCircle className="mx-auto h-7 w-7 text-brand" />
+            <p className="mt-2 text-sm font-semibold text-white">{title}</p>
+            <p className="mt-1 text-xs text-stone-300">Abrir vídeo</p>
+          </div>
+        </button>
+      );
+    }
+
+    return src ? (
+      <div className={wrapperClass}>
+        <iframe src={src} title={title} loading="lazy" className={`${heightClass} w-full`} allow="fullscreen; picture-in-picture" />
+      </div>
+    ) : null;
   }
 
   return (
