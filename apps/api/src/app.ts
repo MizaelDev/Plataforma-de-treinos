@@ -32,6 +32,14 @@ app.get("/health", (_request, response) => {
   response.json({ status: "ok" });
 });
 
+app.get("/", (_request, response) => {
+  response.json({
+    status: "ok",
+    service: "Ronivon Treinamentos API",
+    health: "/health"
+  });
+});
+
 app.use("/auth", authRouter);
 app.use("/dashboard", dashboardRouter);
 app.use("/students", studentsRouter);
