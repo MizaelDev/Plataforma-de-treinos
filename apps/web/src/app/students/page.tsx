@@ -44,6 +44,7 @@ export default function StudentsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [page, setPage] = useState(1);
+  const [studentToInactivate, setStudentToInactivate] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
   async function load() {
@@ -79,10 +80,26 @@ export default function StudentsPage() {
     setError("");
     setSuccess("");
     try {
+      await api(`/students/${student.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "INATIVO" })
+      });
+      setStudentToInactivate(null);
+      await load();
+      setSuccess("Aluno inativado com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado.");
+    }
+  }
+
+  async function deleteStudent(student: Student) {
+    setError("");
+    setSuccess("");
+    try {
       await api(`/students/${student.id}`, { method: "DELETE" });
       setStudentToDelete(null);
       await load();
-      setSuccess("Aluno inativado com sucesso.");
+      setSuccess("Aluno excluído da listagem com sucesso.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     }
@@ -151,7 +168,8 @@ export default function StudentsPage() {
                       <Link href={`/students/${student.id}`} className="inline-flex h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">
                         Ver detalhes
                       </Link>
-                      {student.status === "ATIVO" && <Button type="button" variant="danger" onClick={() => setStudentToDelete(student)}>Inativar</Button>}
+                      {student.status === "ATIVO" && <Button type="button" variant="secondary" onClick={() => setStudentToInactivate(student)}>Inativar</Button>}
+                      <Button type="button" variant="danger" onClick={() => setStudentToDelete(student)}>Excluir</Button>
                     </div>
                   </MobileRecordCard>
                 ))}
@@ -187,10 +205,13 @@ export default function StudentsPage() {
                               Ver detalhes
                             </Link>
                             {student.status === "ATIVO" && (
-                              <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setStudentToDelete(student)}>
+                              <Button type="button" variant="secondary" className="h-8 px-3" onClick={() => setStudentToInactivate(student)}>
                                 Inativar
                               </Button>
                             )}
+                            <Button type="button" variant="danger" className="h-8 px-3" onClick={() => setStudentToDelete(student)}>
+                              Excluir
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -205,12 +226,21 @@ export default function StudentsPage() {
       )}
 
       <ConfirmModal
-        open={!!studentToDelete}
+        open={!!studentToInactivate}
         title="Inativar aluno"
-        description={`O aluno ${studentToDelete?.fullName ?? ""} será marcado como inativo e o acesso dele será bloqueado.`}
+        description={`O aluno ${studentToInactivate?.fullName ?? ""} será marcado como inativo e o acesso dele será bloqueado.`}
         confirmLabel="Inativar"
+        onCancel={() => setStudentToInactivate(null)}
+        onConfirm={() => studentToInactivate && inactivateStudent(studentToInactivate)}
+      />
+
+      <ConfirmModal
+        open={!!studentToDelete}
+        title="Excluir aluno"
+        description={`O aluno ${studentToDelete?.fullName ?? ""} sairá da listagem e não poderá acessar o sistema. O histórico financeiro, avaliações e treinos ficará preservado para auditoria.`}
+        confirmLabel="Excluir"
         onCancel={() => setStudentToDelete(null)}
-        onConfirm={() => studentToDelete && inactivateStudent(studentToDelete)}
+        onConfirm={() => studentToDelete && deleteStudent(studentToDelete)}
       />
     </AppShell>
   );

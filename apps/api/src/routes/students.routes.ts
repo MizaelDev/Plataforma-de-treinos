@@ -213,22 +213,35 @@ studentsRouter.delete(
   requireRoles("ADMIN"),
   asyncRoute(async (request, response) => {
     const id = requiredParam(request, "id");
-    const student = await prisma.student.update({
-      where: { id, organizationId: request.user!.organizationId },
-      data: { status: "INATIVO" }
+    const student = await prisma.student.findFirst({
+      where: { id, organizationId: request.user!.organizationId, deletedAt: null },
+      select: { id: true, userId: true }
     });
 
-    if (student.userId) {
-      await prisma.user.update({
-        where: { id: student.userId },
-        data: { isActive: false }
-      });
+    if (!student) {
+      response.status(404).json({ message: "Aluno não encontrado." });
+      return;
     }
+
+    await prisma.$transaction([
+      prisma.student.update({
+        where: { id: student.id },
+        data: { status: "INATIVO", deletedAt: new Date() }
+      }),
+      ...(student.userId
+        ? [
+            prisma.user.update({
+              where: { id: student.userId },
+              data: { isActive: false }
+            })
+          ]
+        : [])
+    ]);
 
     await auditLog({
       organizationId: request.user!.organizationId,
       actorUserId: request.user!.id,
-      action: "INACTIVATE",
+      action: "DELETE",
       entity: "Student",
       entityId: id
     });
