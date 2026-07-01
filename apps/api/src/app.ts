@@ -20,6 +20,7 @@ import { auditRouter } from "./routes/audit.routes.js";
 import { paymentsRouter } from "./routes/payments.routes.js";
 import { paymentWebhooksRouter } from "./routes/payment-webhooks.routes.js";
 import { devPaymentsRouter } from "./routes/dev-payments.routes.js";
+import { performanceMiddleware } from "./utils/performance.js";
 
 export const app = express();
 
@@ -27,6 +28,7 @@ app.use(helmet());
 app.use(cors({ origin: env.CORS_ORIGIN.split(",").map((origin) => origin.trim()) }));
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
+app.use(performanceMiddleware);
 
 app.get("/health", (_request, response) => {
   response.json({ status: "ok" });

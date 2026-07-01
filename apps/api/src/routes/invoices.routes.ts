@@ -7,6 +7,7 @@ import { safePaymentTransactionSelect } from "../services/payments.service.js";
 import { prisma } from "../services/prisma.js";
 import { asyncRoute } from "../utils/async-route.js";
 import { requiredParam } from "../utils/http.js";
+import { perfMeasure } from "../utils/performance.js";
 
 export const invoicesRouter = Router();
 
@@ -21,17 +22,18 @@ invoicesRouter.get(
   "/",
   requireRoles("ADMIN", "PROFESSOR"),
   asyncRoute(async (request, response) => {
-    const invoices = await prisma.invoice.findMany({
+    const invoices = await perfMeasure(request, "invoices.findMany", () => prisma.invoice.findMany({
       where: { organizationId: request.user!.organizationId, student: activeStudentFilter },
       include: {
         student: { select: { id: true, fullName: true, email: true } },
         plan: true,
         paymentTransactions: { select: safePaymentTransactionSelect, orderBy: { createdAt: "desc" }, take: 1 }
       },
-      orderBy: { dueDate: "desc" }
-    });
+      orderBy: { dueDate: "desc" },
+      take: 100
+    }));
 
-    const financialSettings = await getFinancialSettings(request.user!.organizationId);
+    const financialSettings = await perfMeasure(request, "financialSettings", () => getFinancialSettings(request.user!.organizationId));
     const invoicesWithCharges = invoices.map((invoice) => ({
         ...invoice,
         charges: calculateInvoiceChargesWithSettings(financialSettings, invoice.dueDate, invoice.amount)
@@ -45,21 +47,21 @@ invoicesRouter.post(
   "/",
   requireRoles("ADMIN"),
   asyncRoute(async (request, response) => {
-    const data = invoiceSchema.parse(request.body);
-    const student = await prisma.student.findFirst({
-      where: { id: data.studentId, organizationId: request.user!.organizationId, ...activeStudentFilter }
-    });
+    const parsedData = await perfMeasure(request, "invoice.validation", async () => invoiceSchema.parse(request.body));
+    const student = await perfMeasure(request, "invoice.student.find", () => prisma.student.findFirst({
+      where: { id: parsedData.studentId, organizationId: request.user!.organizationId, ...activeStudentFilter }
+    }));
 
     if (!student) {
       response.status(404).json({ message: "Aluno não encontrado." });
       return;
     }
 
-    if (data.planId) {
-      const plan = await prisma.plan.findFirst({
-        where: { id: data.planId, organizationId: request.user!.organizationId, deletedAt: null },
+    if (parsedData.planId) {
+      const plan = await perfMeasure(request, "invoice.plan.find", () => prisma.plan.findFirst({
+        where: { id: parsedData.planId, organizationId: request.user!.organizationId, deletedAt: null },
         select: { id: true }
-      });
+      }));
 
       if (!plan) {
         response.status(404).json({ message: "Plano não encontrado." });
@@ -67,19 +69,19 @@ invoicesRouter.post(
       }
     }
 
-    const invoice = await prisma.invoice.create({
+    const invoice = await perfMeasure(request, "invoice.create", () => prisma.invoice.create({
       data: {
         organizationId: request.user!.organizationId,
-        studentId: data.studentId,
-        planId: data.planId,
-        dueDate: new Date(data.dueDate),
-        amount: data.amount,
-        status: data.status,
-        paidAt: data.status === "PAGO" ? new Date() : null,
-        paymentMethod: data.status === "PAGO" ? "MANUAL" : null,
-        totalPaid: data.status === "PAGO" ? data.amount : 0
+        studentId: parsedData.studentId,
+        planId: parsedData.planId,
+        dueDate: new Date(parsedData.dueDate),
+        amount: parsedData.amount,
+        status: parsedData.status,
+        paidAt: parsedData.status === "PAGO" ? new Date() : null,
+        paymentMethod: parsedData.status === "PAGO" ? "MANUAL" : null,
+        totalPaid: parsedData.status === "PAGO" ? parsedData.amount : 0
       }
-    });
+    }));
 
     await auditLog({ organizationId: request.user!.organizationId, actorUserId: request.user!.id, action: "CREATE", entity: "Invoice", entityId: invoice.id });
     response.status(201).json({ invoice });

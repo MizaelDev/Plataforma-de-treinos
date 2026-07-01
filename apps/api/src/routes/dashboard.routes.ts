@@ -3,6 +3,7 @@ import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { calculateInvoiceChargesWithSettings, getFinancialSettings } from "../services/finance.service.js";
 import { prisma } from "../services/prisma.js";
 import { asyncRoute } from "../utils/async-route.js";
+import { perfMeasure } from "../utils/performance.js";
 
 export const dashboardRouter = Router();
 
@@ -24,7 +25,7 @@ dashboardRouter.get(
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const firstDayNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-    const [activeStudents, dueSoon, overdue, monthRevenue, delinquentStudents, dueSoonInvoices, delinquentStudentRows, latestPayments, latestStudents] = await Promise.all([
+    const [activeStudents, dueSoon, overdue, monthRevenue, delinquentStudents, dueSoonInvoices, delinquentStudentRows, latestPayments, latestStudents] = await perfMeasure(request, "dashboard.queries", () => Promise.all([
       prisma.student.count({ where: { organizationId, status: "ATIVO", deletedAt: null } }),
       prisma.invoice.count({ where: { organizationId, student: activeStudentFilter, status: "PENDENTE", dueDate: { gte: now, lte: inSevenDays } } }),
       prisma.invoice.count({ where: { organizationId, student: activeStudentFilter, status: { in: ["PENDENTE", "ATRASADO"] }, dueDate: { lt: now } } }),
@@ -77,7 +78,7 @@ dashboardRouter.get(
         orderBy: { createdAt: "desc" },
         take: 6
       })
-    ]);
+    ]));
 
     const financialSettings = await getFinancialSettings(organizationId);
 

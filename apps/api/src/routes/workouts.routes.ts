@@ -5,6 +5,7 @@ import { prisma } from "../services/prisma.js";
 import { createWorkout, updateWorkout } from "../services/workouts.service.js";
 import { asyncRoute } from "../utils/async-route.js";
 import { requiredParam } from "../utils/http.js";
+import { perfMeasure } from "../utils/performance.js";
 
 export const workoutsRouter = Router();
 
@@ -29,11 +30,12 @@ workoutsRouter.get(
   "/",
   asyncRoute(async (request, response) => {
     const studentId = typeof request.query.studentId === "string" ? request.query.studentId : undefined;
-    const workouts = await prisma.workoutPlan.findMany({
+    const workouts = await perfMeasure(request, "workouts.findMany", () => prisma.workoutPlan.findMany({
       where: { organizationId: request.user!.organizationId, deletedAt: null, ...(studentId ? { studentId } : {}) },
       include: workoutInclude,
-      orderBy: { createdAt: "desc" }
-    });
+      orderBy: { createdAt: "desc" },
+      take: 100
+    }));
 
     response.json({ workouts });
   })
@@ -42,12 +44,12 @@ workoutsRouter.get(
 workoutsRouter.post(
   "/",
   asyncRoute(async (request, response) => {
-    const workout = await createWorkout(request.body, {
+    const workout = await perfMeasure(request, "workout.create", () => createWorkout(request.body, {
       organizationId: request.user!.organizationId,
       actorUserId: request.user!.id
-    });
+    }));
 
-    await auditLog({ organizationId: request.user!.organizationId, actorUserId: request.user!.id, action: "CREATE", entity: "WorkoutPlan", entityId: workout.id });
+    await perfMeasure(request, "audit", () => auditLog({ organizationId: request.user!.organizationId, actorUserId: request.user!.id, action: "CREATE", entity: "WorkoutPlan", entityId: workout.id }));
     response.status(201).json({ workout });
   })
 );

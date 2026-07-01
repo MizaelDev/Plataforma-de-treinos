@@ -78,7 +78,8 @@ export async function createStudent(payload: unknown, context: StudentContext) {
     throw new AppError(409, "Já existe um aluno cadastrado com este CPF.");
   }
 
-  const temporaryPassword = generateTemporaryPassword();
+  const temporaryPassword = input.createAccess ? generateTemporaryPassword() : null;
+  const passwordHash = temporaryPassword ? await bcrypt.hash(temporaryPassword, 10) : null;
 
   if (input.createAccess) {
     const existingUser = await prisma.user.findUnique({
@@ -102,7 +103,7 @@ export async function createStudent(payload: unknown, context: StudentContext) {
         organizationId: context.organizationId,
         name: data.fullName,
         email: data.email,
-        passwordHash: await bcrypt.hash(temporaryPassword, 10),
+        passwordHash: passwordHash!,
         role: "ALUNO"
       }
     });

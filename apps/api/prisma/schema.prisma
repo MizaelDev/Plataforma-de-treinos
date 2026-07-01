@@ -153,6 +153,8 @@ model Student {
   @@unique([organizationId, cpfHash])
   @@index([organizationId, status])
   @@index([organizationId, email])
+  @@index([organizationId, deletedAt, createdAt])
+  @@index([organizationId, modality])
 }
 
 model Plan {
@@ -215,6 +217,9 @@ model Invoice {
 
   @@index([organizationId, status, dueDate])
   @@index([studentId, dueDate])
+  @@index([organizationId, studentId, status, dueDate])
+  @@index([organizationId, paidAt])
+  @@index([organizationId, createdAt])
 }
 
 model PaymentTransaction {
@@ -297,6 +302,8 @@ model PhysicalAssessment {
 
   @@index([organizationId, studentId, assessedAt])
   @@index([organizationId, deletedAt])
+  @@index([studentId, deletedAt, assessedAt])
+  @@index([organizationId, assessedAt])
 }
 
 model WorkoutPlan {
@@ -319,6 +326,8 @@ model WorkoutPlan {
 
   @@index([organizationId, studentId, isActive])
   @@index([organizationId, deletedAt])
+  @@index([studentId, deletedAt, createdAt])
+  @@index([organizationId, createdAt])
 }
 
 model WorkoutDay {
@@ -378,6 +387,7 @@ model ExerciseLibrary {
   @@index([organizationId, isActive, deletedAt])
   @@index([organizationId, modality, category])
   @@index([organizationId, videoProvider])
+  @@index([organizationId, deletedAt, name])
 }
 
 model Course {
@@ -393,6 +403,7 @@ model Course {
   deletedAt      DateTime?
 
   @@index([organizationId, isActive, deletedAt])
+  @@index([organizationId, deletedAt, title])
 }
 
 model CourseLesson {

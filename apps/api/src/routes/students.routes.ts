@@ -9,6 +9,7 @@ import { changeStudentCurrentPlan } from "../services/student-plans.service.js";
 import { releaseDeletedStudentIdentity } from "../services/student-identity.service.js";
 import { asyncRoute } from "../utils/async-route.js";
 import { requiredParam } from "../utils/http.js";
+import { perfMeasure } from "../utils/performance.js";
 
 export const studentsRouter = Router();
 
@@ -23,7 +24,7 @@ studentsRouter.get(
   "/",
   requireRoles("ADMIN", "PROFESSOR"),
   asyncRoute(async (request, response) => {
-    const students = await prisma.student.findMany({
+    const students = await perfMeasure(request, "students.findMany", () => prisma.student.findMany({
       where: { organizationId: request.user!.organizationId, deletedAt: null },
       orderBy: { fullName: "asc" },
       select: {
@@ -45,8 +46,9 @@ studentsRouter.get(
           include: { plan: true },
           take: 1
         }
-      }
-    });
+      },
+      take: 100
+    }));
 
     response.json({ students });
   })
@@ -56,17 +58,17 @@ studentsRouter.post(
   "/",
   requireRoles("ADMIN", "PROFESSOR"),
   asyncRoute(async (request, response) => {
-    const result = await createStudent(request.body, {
+    const result = await perfMeasure(request, "student.create", () => createStudent(request.body, {
       organizationId: request.user!.organizationId
-    });
+    }));
 
-    await auditLog({
+    await perfMeasure(request, "audit", () => auditLog({
       organizationId: request.user!.organizationId,
       actorUserId: request.user!.id,
       action: "CREATE",
       entity: "Student",
       entityId: result.student.id
-    });
+    }));
 
     response.status(201).json({ student: removeInternalStudentFields(result.student), access: result.access });
   })
@@ -77,7 +79,7 @@ studentsRouter.get(
   requireRoles("ADMIN", "PROFESSOR"),
   asyncRoute(async (request, response) => {
     const id = requiredParam(request, "id");
-    const student = await prisma.student.findFirst({
+    const student = await perfMeasure(request, "student.details.find", () => prisma.student.findFirst({
       where: { id, organizationId: request.user!.organizationId, deletedAt: null },
       include: {
         invoices: {
@@ -85,13 +87,15 @@ studentsRouter.get(
             plan: true,
             paymentTransactions: { select: safePaymentTransactionSelect, orderBy: { createdAt: "desc" }, take: 1 }
           },
-          orderBy: { dueDate: "desc" }
+          orderBy: { dueDate: "desc" },
+          take: 100
         },
         studentPlans: { include: { plan: true }, orderBy: { createdAt: "desc" } },
         assessments: {
           where: { deletedAt: null },
           include: { professor: { select: { id: true, name: true } } },
-          orderBy: { assessedAt: "desc" }
+          orderBy: { assessedAt: "desc" },
+          take: 20
         },
         workoutPlans: {
           where: { deletedAt: null },
@@ -107,11 +111,12 @@ studentsRouter.get(
               orderBy: { label: "asc" }
             }
           },
-          orderBy: [{ isActive: "desc" }, { createdAt: "desc" }]
+          orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
+          take: 20
         },
         user: { select: { id: true, email: true, isActive: true, updatedAt: true } }
       }
-    });
+    }));
 
     if (!student) {
       response.status(404).json({ message: "Aluno não encontrado." });

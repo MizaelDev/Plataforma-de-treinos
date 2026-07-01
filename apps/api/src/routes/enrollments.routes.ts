@@ -3,6 +3,7 @@ import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { auditLog } from "../services/audit.service.js";
 import { createEnrollment } from "../services/enrollments.service.js";
 import { asyncRoute } from "../utils/async-route.js";
+import { perfMeasure } from "../utils/performance.js";
 
 export const enrollmentsRouter = Router();
 
@@ -12,12 +13,12 @@ enrollmentsRouter.use(requireRoles("ADMIN", "PROFESSOR"));
 enrollmentsRouter.post(
   "/",
   asyncRoute(async (request, response) => {
-    const enrollment = await createEnrollment(request.body, {
+    const enrollment = await perfMeasure(request, "enrollment.create", () => createEnrollment(request.body, {
       organizationId: request.user!.organizationId,
       actorUserId: request.user!.id
-    });
+    }));
 
-    await Promise.all([
+    await perfMeasure(request, "audit", () => Promise.all([
       auditLog({
         organizationId: request.user!.organizationId,
         actorUserId: request.user!.id,
@@ -41,7 +42,7 @@ enrollmentsRouter.post(
         entityId: enrollment.invoice.id,
         metadata: { studentId: enrollment.student.id, planId: enrollment.invoice.planId }
       })
-    ]);
+    ]));
 
     response.status(201).json({ enrollment });
   })

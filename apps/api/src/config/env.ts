@@ -8,6 +8,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16),
   CPF_HASH_SECRET: z.string().min(16),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
+  ENABLE_PERFORMANCE_LOGS: z.preprocess((value) => value === "true" || value === true, z.boolean()).default(false),
   STORAGE_PROVIDER: z.string().default("local"),
   STORAGE_BUCKET: z.string().default("students"),
   SUPABASE_URL: z.string().optional(),

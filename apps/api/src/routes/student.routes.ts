@@ -214,7 +214,8 @@ studentAreaRouter.get(
     const invoices = await prisma.invoice.findMany({
       where: { organizationId, studentId },
       select: invoiceSelect,
-      orderBy: { dueDate: "desc" }
+      orderBy: { dueDate: "desc" },
+      take: 100
     });
 
     const financialSettings = await getFinancialSettings(organizationId);

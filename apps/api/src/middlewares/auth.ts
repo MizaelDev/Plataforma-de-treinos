@@ -1,7 +1,9 @@
-﻿import type { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
+import { performance } from "node:perf_hooks";
 import jwt from "jsonwebtoken";
 import type { Role } from "@academia/shared";
 import { env } from "../config/env.js";
+import { perfMark } from "../utils/performance.js";
 
 type TokenPayload = {
   sub: string;
@@ -28,10 +30,12 @@ export function signToken(payload: TokenPayload) {
 }
 
 export function requireAuth(request: Request, response: Response, next: NextFunction) {
+  const startedAt = performance.now();
   const header = request.headers.authorization;
   const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
 
   if (!token) {
+    perfMark(request, "auth", startedAt);
     response.status(401).json({ message: "Token ausente." });
     return;
   }
@@ -44,18 +48,23 @@ export function requireAuth(request: Request, response: Response, next: NextFunc
       organizationId: decoded.organizationId,
       studentId: decoded.studentId
     };
+    perfMark(request, "auth", startedAt);
     next();
   } catch {
+    perfMark(request, "auth", startedAt);
     response.status(401).json({ message: "Token inválido ou expirado." });
   }
 }
 
 export function requireRoles(...roles: Role[]) {
   return (request: Request, response: Response, next: NextFunction) => {
+    const startedAt = performance.now();
     if (!request.user || !roles.includes(request.user.role)) {
+      perfMark(request, "rbac", startedAt);
       response.status(403).json({ message: "Permissão insuficiente." });
       return;
     }
+    perfMark(request, "rbac", startedAt);
     next();
   };
 }

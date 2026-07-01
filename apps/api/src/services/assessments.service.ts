@@ -87,8 +87,10 @@ function buildAssessmentData(input: AssessmentInput, context: Context) {
 
 export async function createAssessment(payload: unknown, context: Context) {
   const input = assessmentSchema.parse(payload);
-  await ensureStudent(input.studentId, context.organizationId);
-  await ensureStudentPlanAllows(input.studentId, context.organizationId, "assessments");
+  await Promise.all([
+    ensureStudent(input.studentId, context.organizationId),
+    ensureStudentPlanAllows(input.studentId, context.organizationId, "assessments")
+  ]);
 
   return prisma.physicalAssessment.create({
     data: buildAssessmentData(input, context),
@@ -98,8 +100,10 @@ export async function createAssessment(payload: unknown, context: Context) {
 
 export async function updateAssessment(id: string, payload: unknown, context: Context) {
   const input = assessmentSchema.parse(payload);
-  await ensureStudent(input.studentId, context.organizationId);
-  await ensureStudentPlanAllows(input.studentId, context.organizationId, "assessments");
+  await Promise.all([
+    ensureStudent(input.studentId, context.organizationId),
+    ensureStudentPlanAllows(input.studentId, context.organizationId, "assessments")
+  ]);
 
   return prisma.physicalAssessment.update({
     where: { id, organizationId: context.organizationId },

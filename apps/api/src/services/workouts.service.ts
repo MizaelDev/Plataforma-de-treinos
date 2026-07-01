@@ -98,9 +98,11 @@ async function deactivateOtherActiveWorkouts(studentId: string, organizationId: 
 export async function createWorkout(payload: unknown, context: Context) {
   const input = workoutSchema.parse(payload);
   if (!context.organizationId) throw new AppError(401, "Sessão inválida. Faça login novamente.");
-  await ensureStudent(input.studentId, context.organizationId);
-  await ensureStudentPlanAllows(input.studentId, context.organizationId, "workouts");
-  await ensureLibraryExercises(input, context.organizationId);
+  await Promise.all([
+    ensureStudent(input.studentId, context.organizationId),
+    ensureStudentPlanAllows(input.studentId, context.organizationId, "workouts"),
+    ensureLibraryExercises(input, context.organizationId)
+  ]);
 
   if (input.isActive) {
     await deactivateOtherActiveWorkouts(input.studentId, context.organizationId);
@@ -135,9 +137,11 @@ export async function updateWorkout(id: string, payload: unknown, context: Conte
     throw new AppError(404, "Ficha de treino não encontrada.");
   }
 
-  await ensureStudent(input.studentId, context.organizationId);
-  await ensureStudentPlanAllows(input.studentId, context.organizationId, "workouts");
-  await ensureLibraryExercises(input, context.organizationId);
+  await Promise.all([
+    ensureStudent(input.studentId, context.organizationId),
+    ensureStudentPlanAllows(input.studentId, context.organizationId, "workouts"),
+    ensureLibraryExercises(input, context.organizationId)
+  ]);
 
   if (input.isActive) {
     await deactivateOtherActiveWorkouts(input.studentId, context.organizationId, id);

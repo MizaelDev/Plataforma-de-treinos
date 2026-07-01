@@ -5,6 +5,7 @@ import { createExerciseLibraryItem, updateExerciseLibraryItem } from "../service
 import { prisma } from "../services/prisma.js";
 import { asyncRoute } from "../utils/async-route.js";
 import { requiredParam } from "../utils/http.js";
+import { perfMeasure } from "../utils/performance.js";
 
 export const exercisesRouter = Router();
 
@@ -17,7 +18,7 @@ exercisesRouter.get(
     const { search, category, modality, difficultyLevel, active } = request.query;
     const searchTerm = typeof search === "string" ? search.trim() : "";
 
-    const exercises = await prisma.exerciseLibrary.findMany({
+    const exercises = await perfMeasure(request, "exercises.findMany", () => prisma.exerciseLibrary.findMany({
       where: {
         organizationId: request.user!.organizationId,
         deletedAt: null,
@@ -36,8 +37,9 @@ exercisesRouter.get(
             }
           : {})
       },
-      orderBy: [{ isActive: "desc" }, { name: "asc" }]
-    });
+      orderBy: [{ isActive: "desc" }, { name: "asc" }],
+      take: 100
+    }));
 
     response.json({ exercises });
   })

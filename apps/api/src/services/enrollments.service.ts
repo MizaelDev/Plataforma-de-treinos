@@ -73,6 +73,7 @@ export async function createEnrollment(payload: unknown, context: EnrollmentCont
   }
 
   const temporaryPassword = input.student.createAccess ? generateTemporaryPassword() : null;
+  const passwordHash = temporaryPassword ? await bcrypt.hash(temporaryPassword, 10) : null;
 
   const enrollment = await prisma.$transaction(async (tx) => {
     const user = input.student.createAccess
@@ -81,7 +82,7 @@ export async function createEnrollment(payload: unknown, context: EnrollmentCont
             organizationId: context.organizationId,
             name: input.student.fullName.trim(),
             email,
-            passwordHash: await bcrypt.hash(temporaryPassword!, 10),
+            passwordHash: passwordHash!,
             role: "ALUNO",
             isActive: true
           },

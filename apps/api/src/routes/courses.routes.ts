@@ -34,7 +34,8 @@ coursesRouter.get(
     const courses = await prisma.course.findMany({
       where: { organizationId: request.user!.organizationId, deletedAt: null },
       include: { lessons: { where: { deletedAt: null }, orderBy: { order: "asc" } } },
-      orderBy: [{ isActive: "desc" }, { title: "asc" }]
+      orderBy: [{ isActive: "desc" }, { title: "asc" }],
+      take: 100
     });
 
     response.json({ courses });
