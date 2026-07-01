@@ -110,7 +110,7 @@ export default function EnrollmentsPage() {
     setSaving(true);
 
     try {
-      const payload = await api<{ enrollment: { student: { id: string }; access?: { setupEmailSent: boolean } | null; paymentTransaction?: PaymentTransaction; paymentError?: string } }>("/enrollments", {
+      const payload = await api<{ enrollment: { student: { id: string }; access?: { setupEmailSent: boolean; setupEmailError?: string | null } | null; paymentTransaction?: PaymentTransaction; paymentError?: string } }>("/enrollments", {
         method: "POST",
         body: JSON.stringify({
           student: {
@@ -142,7 +142,7 @@ export default function EnrollmentsPage() {
       setCreatedPayment(payload.enrollment.paymentTransaction ?? null);
       const accessMessage =
         payload.enrollment.access && !payload.enrollment.access.setupEmailSent
-          ? " O acesso do aluno foi criado, mas o e-mail de definição de senha não foi enviado. Confira as configurações de SMTP."
+          ? ` O acesso do aluno foi criado, mas o e-mail de definição de senha não foi enviado. Confira as configurações de e-mail${payload.enrollment.access.setupEmailError ? `: ${payload.enrollment.access.setupEmailError}` : "."}`
           : "";
       const pixMessage = payload.enrollment.paymentError ? ` O Pix não foi gerado: ${payload.enrollment.paymentError}` : "";
       setSuccess(`Matrícula concluída com sucesso.${accessMessage}${pixMessage} Você pode registrar a avaliação agora ou fazer depois.`);

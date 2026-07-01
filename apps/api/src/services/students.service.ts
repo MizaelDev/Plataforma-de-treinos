@@ -119,13 +119,16 @@ export async function createStudent(payload: unknown, context: StudentContext) {
       access: {
         email: user.email,
         userId: user.id,
-        setupEmailSent: false
+        setupEmailSent: false,
+        setupEmailError: null as string | null
       }
     };
   });
 
   if (result.access?.userId) {
-    result.access.setupEmailSent = await sendPasswordResetLink(result.access.userId, "setup");
+    const setupEmail = await sendPasswordResetLink(result.access.userId, "setup");
+    result.access.setupEmailSent = setupEmail.sent;
+    result.access.setupEmailError = setupEmail.error ?? null;
   }
 
   return result;
@@ -257,6 +260,6 @@ export async function createOrResetStudentAccess(id: string, context: StudentCon
     return { user, created: true };
   });
 
-  const setupEmailSent = await sendPasswordResetLink(result.user.id, "setup");
-  return { ...result, setupEmailSent };
+  const setupEmail = await sendPasswordResetLink(result.user.id, "setup");
+  return { ...result, setupEmailSent: setupEmail.sent, setupEmailError: setupEmail.error ?? null };
 }

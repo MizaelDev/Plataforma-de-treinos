@@ -7,6 +7,11 @@ import { prisma } from "./prisma.js";
 
 const RESET_TOKEN_EXPIRES_MINUTES = 60;
 
+type PasswordResetEmailResult = {
+  sent: boolean;
+  error?: string;
+};
+
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -37,13 +42,15 @@ function appBaseUrl() {
   return (env.PUBLIC_APP_URL ?? env.CORS_ORIGIN.split(",")[0] ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
-export async function sendPasswordResetLink(userId: string, reason: "reset" | "setup" = "reset") {
+export async function sendPasswordResetLink(userId: string, reason: "reset" | "setup" = "reset"): Promise<PasswordResetEmailResult> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, email: true, name: true, isActive: true }
   });
 
-  if (!user || !user.isActive) return false;
+  if (!user || !user.isActive) {
+    return { sent: false, error: "Usuário inativo ou não encontrado." };
+  }
 
   const token = randomBytes(32).toString("hex");
   const expiresAt = addMinutes(new Date(), RESET_TOKEN_EXPIRES_MINUTES);
@@ -80,10 +87,11 @@ O link expira em ${RESET_TOKEN_EXPIRES_MINUTES} minutos.`;
       text,
       html: `<p>Olá, ${user.name}.</p><p><a href="${resetUrl}">${buttonText}</a></p><p>O link expira em ${RESET_TOKEN_EXPIRES_MINUTES} minutos.</p>`
     });
-    return true;
+    return { sent: true };
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro desconhecido no envio de e-mail.";
     console.error("Falha ao enviar e-mail de redefinição de senha.", error);
-    return false;
+    return { sent: false, error: message };
   }
 }
 

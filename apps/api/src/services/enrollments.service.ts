@@ -139,12 +139,14 @@ export async function createEnrollment(payload: unknown, context: EnrollmentCont
       student,
       studentPlan,
       invoice,
-      access: user ? { userId: user.id, email: user.email, setupEmailSent: false } : null
+      access: user ? { userId: user.id, email: user.email, setupEmailSent: false, setupEmailError: null as string | null } : null
     };
   });
 
   if (enrollment.access?.userId) {
-    enrollment.access.setupEmailSent = await sendPasswordResetLink(enrollment.access.userId, "setup");
+    const setupEmail = await sendPasswordResetLink(enrollment.access.userId, "setup");
+    enrollment.access.setupEmailSent = setupEmail.sent;
+    enrollment.access.setupEmailError = setupEmail.error ?? null;
   }
 
   if (!shouldGeneratePix) {
