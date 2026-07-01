@@ -1,3 +1,4 @@
+import { lookup } from "node:dns/promises";
 import { env } from "../config/env.js";
 
 type MailInput = {
@@ -18,12 +19,15 @@ export async function sendMail(input: MailInput) {
   }
 
   const nodemailer = await import("nodemailer");
+  const smtpAddress = await lookup(env.SMTP_HOST, { family: 4 });
   const transportOptions = {
-    host: env.SMTP_HOST,
+    host: smtpAddress.address,
     port: env.SMTP_PORT ?? 587,
     secure: (env.SMTP_PORT ?? 587) === 465,
     auth: env.SMTP_USER && env.SMTP_PASS ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
-    family: 4,
+    tls: {
+      servername: env.SMTP_HOST
+    },
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000
