@@ -138,6 +138,7 @@ export default function StudentDetailPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [savingAccess, setSavingAccess] = useState(false);
+  const [setupAccessLink, setSetupAccessLink] = useState<string | null>(null);
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [planForm, setPlanForm] = useState(initialPlanChangeForm);
   const [savingPlan, setSavingPlan] = useState(false);
@@ -160,22 +161,30 @@ export default function StudentDetailPage() {
     if (!student) return;
     setError("");
     setSuccess("");
+    setSetupAccessLink(null);
     setSavingAccess(true);
     try {
-        const payload = await api<{ access: { userId: string; email: string; created: boolean; isActive: boolean; setupEmailSent: boolean; setupEmailError?: string | null } }>(`/students/${student.id}/access`, { method: "POST" });
+        const payload = await api<{ access: { userId: string; email: string; created: boolean; isActive: boolean; setupEmailSent: boolean; setupEmailLink?: string | null; setupEmailError?: string | null } }>(`/students/${student.id}/access`, { method: "POST" });
         setStudent((current) => current ? { ...current, user: { id: payload.access.userId, email: payload.access.email, isActive: payload.access.isActive } } : current);
+        setSetupAccessLink(payload.access.setupEmailLink ?? null);
         setSuccess(
           payload.access.setupEmailSent
             ? payload.access.created
               ? `Acesso criado. Enviamos um link para ${payload.access.email} definir a senha.`
               : `Link de redefinição enviado para ${payload.access.email}.`
-            : `Acesso atualizado, mas o e-mail não foi entregue. Tente reenviar o link em alguns instantes${payload.access.setupEmailError ? ` Detalhe: ${payload.access.setupEmailError}` : "."}`
+            : "Link de acesso gerado. Copie e envie ao aluno para ele definir a senha."
         );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
       setSavingAccess(false);
     }
+  }
+
+  async function copySetupAccessLink() {
+    if (!setupAccessLink) return;
+    await navigator.clipboard.writeText(setupAccessLink);
+    setSuccess("Link de acesso copiado. Envie ao aluno para ele definir a senha.");
   }
 
   function selectPlan(planId: string) {
@@ -367,6 +376,16 @@ export default function StudentDetailPage() {
                 </Button>
               </div>
             </div>
+            {setupAccessLink && (
+              <div className="mt-4 rounded-md border border-brand/40 bg-brand/10 p-3">
+                <p className="text-sm font-semibold text-ink">Link para definir senha</p>
+                <p className="mt-1 text-xs text-muted">Copie e envie ao aluno. O link expira em 60 minutos.</p>
+                <div className="mt-2 break-all rounded-md border border-stone-700 bg-stone-950/50 p-2 text-xs text-stone-200">
+                  {setupAccessLink}
+                </div>
+                <Button type="button" className="mt-3" onClick={copySetupAccessLink}>Copiar link de acesso</Button>
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard className="mt-5 p-5">

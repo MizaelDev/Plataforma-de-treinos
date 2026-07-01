@@ -178,6 +178,7 @@ studentsRouter.post(
         isActive: access.user.isActive,
         created: access.created,
         setupEmailSent: access.setupEmailSent,
+        setupEmailLink: access.setupEmailLink,
         setupEmailError: access.setupEmailError
       }
     });

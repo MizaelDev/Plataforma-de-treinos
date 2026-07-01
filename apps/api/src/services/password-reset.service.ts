@@ -9,6 +9,7 @@ const RESET_TOKEN_EXPIRES_MINUTES = 60;
 
 type PasswordResetEmailResult = {
   sent: boolean;
+  resetUrl?: string;
   error?: string;
 };
 
@@ -87,11 +88,11 @@ O link expira em ${RESET_TOKEN_EXPIRES_MINUTES} minutos.`;
       text,
       html: `<p>Olá, ${user.name}.</p><p><a href="${resetUrl}">${buttonText}</a></p><p>O link expira em ${RESET_TOKEN_EXPIRES_MINUTES} minutos.</p>`
     });
-    return { sent: true };
+    return { sent: true, resetUrl };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro desconhecido no envio de e-mail.";
     console.error("Falha ao enviar e-mail de redefinição de senha.", error);
-    return { sent: false, error: message };
+    return { sent: false, resetUrl, error: message };
   }
 }
 

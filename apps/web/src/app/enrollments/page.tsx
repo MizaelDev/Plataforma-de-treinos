@@ -72,6 +72,7 @@ export default function EnrollmentsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [createdStudentId, setCreatedStudentId] = useState<string | null>(null);
+  const [createdSetupLink, setCreatedSetupLink] = useState<string | null>(null);
   const [createdPayment, setCreatedPayment] = useState<PaymentTransaction | null>(null);
 
   useEffect(() => {
@@ -113,11 +114,12 @@ export default function EnrollmentsPage() {
     setError("");
     setSuccess("");
     setCreatedStudentId(null);
+    setCreatedSetupLink(null);
     setCreatedPayment(null);
     setSaving(true);
 
     try {
-      const payload = await api<{ enrollment: { student: { id: string }; access?: { setupEmailSent: boolean; setupEmailError?: string | null } | null; paymentTransaction?: PaymentTransaction; paymentError?: string } }>("/enrollments", {
+      const payload = await api<{ enrollment: { student: { id: string }; access?: { setupEmailSent: boolean; setupEmailLink?: string | null; setupEmailError?: string | null } | null; paymentTransaction?: PaymentTransaction; paymentError?: string } }>("/enrollments", {
         method: "POST",
         body: JSON.stringify({
           student: {
@@ -146,10 +148,11 @@ export default function EnrollmentsPage() {
 
       setForm(initialForm());
       setCreatedStudentId(payload.enrollment.student.id);
+      setCreatedSetupLink(payload.enrollment.access?.setupEmailLink ?? null);
       setCreatedPayment(payload.enrollment.paymentTransaction ?? null);
       const accessMessage =
         payload.enrollment.access && !payload.enrollment.access.setupEmailSent
-          ? ` O acesso do aluno foi criado, mas o e-mail de definição de senha não foi entregue. Tente reenviar pelo perfil do aluno${payload.enrollment.access.setupEmailError ? ` Detalhe: ${payload.enrollment.access.setupEmailError}` : "."}`
+          ? " O e-mail automático não foi entregue. Copie o link de acesso abaixo e envie ao aluno."
           : "";
       const pixMessage = payload.enrollment.paymentError ? ` O Pix não foi gerado: ${payload.enrollment.paymentError}` : "";
       setSuccess(`Matrícula concluída com sucesso.${accessMessage}${pixMessage} Você pode registrar a avaliação agora ou fazer depois.`);
@@ -166,6 +169,13 @@ export default function EnrollmentsPage() {
     if (!createdPayment?.copyPasteCode) return;
     await navigator.clipboard.writeText(createdPayment.copyPasteCode);
     setSuccess("Código Pix copiado.");
+  }
+
+  async function copySetupLink() {
+    if (!createdSetupLink) return;
+    await navigator.clipboard.writeText(createdSetupLink);
+    setSuccess("Link de acesso copiado. Envie ao aluno para ele definir a senha.");
+    showFeedback();
   }
 
   async function simulateCreatedPayment() {
@@ -204,6 +214,16 @@ export default function EnrollmentsPage() {
             <div>
               <p className="text-sm font-semibold text-ink">Aluno matriculado</p>
               <p className="mt-1 text-sm text-muted">A avaliação física completa pode ser preenchida agora, mas também fica disponível depois no perfil do aluno.</p>
+              {createdSetupLink && (
+                <div className="mt-3 rounded-md border border-brand/40 bg-brand/10 p-3">
+                  <p className="text-sm font-semibold text-ink">Link para definir senha</p>
+                  <p className="mt-1 text-xs text-muted">Copie e envie ao aluno. O link expira em 60 minutos.</p>
+                  <div className="mt-2 break-all rounded-md border border-stone-700 bg-stone-950/50 p-2 text-xs text-stone-200">
+                    {createdSetupLink}
+                  </div>
+                  <Button type="button" className="mt-3" onClick={copySetupLink}>Copiar link de acesso</Button>
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button type="button" onClick={() => router.push(`/assessments?studentId=${createdStudentId}`)}>
@@ -287,7 +307,7 @@ export default function EnrollmentsPage() {
               </label>
               <label className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
                 <input type="checkbox" checked={form.createAccess} onChange={(event) => setForm((current) => ({ ...current, createAccess: event.target.checked }))} className="h-4 w-4 rounded border-gray-300 text-brand" />
-                Enviar link para o aluno definir a senha
+                Criar acesso e gerar link de senha
               </label>
               <label className="text-sm font-medium text-gray-700 md:col-span-2 xl:col-span-3">
                 Endereço
