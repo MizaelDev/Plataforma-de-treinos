@@ -8,7 +8,34 @@ type MailInput = {
   html?: string;
 };
 
+async function sendWithResend(input: MailInput) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      from: env.SMTP_FROM ?? "Ronivon Treinamentos <onboarding@resend.dev>",
+      to: [input.to],
+      subject: input.subject,
+      text: input.text,
+      html: input.html
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Resend falhou ao enviar e-mail: ${response.status} ${errorText}`);
+  }
+}
+
 export async function sendMail(input: MailInput) {
+  if (env.EMAIL_PROVIDER === "resend") {
+    await sendWithResend(input);
+    return;
+  }
+
   if (!env.SMTP_HOST) {
     console.log("[email:dev]", {
       to: input.to,

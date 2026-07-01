@@ -29,6 +29,8 @@ const envSchema = z.object({
   MERCADO_PAGO_WEBHOOK_SECRET: z.string().optional(),
   PUBLIC_APP_URL: z.string().url().optional(),
   API_BASE_URL: z.string().url().optional(),
+  EMAIL_PROVIDER: z.enum(["smtp", "resend"]).default("smtp"),
+  RESEND_API_KEY: z.string().optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().optional(),
   SMTP_USER: z.string().optional(),
@@ -60,6 +62,14 @@ const envSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["MERCADO_PAGO_ACCESS_TOKEN"],
       message: "MERCADO_PAGO_ACCESS_TOKEN é obrigatório quando PAYMENT_PROVIDER=mercado_pago."
+    });
+  }
+
+  if (value.EMAIL_PROVIDER === "resend" && !value.RESEND_API_KEY) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["RESEND_API_KEY"],
+      message: "RESEND_API_KEY é obrigatório quando EMAIL_PROVIDER=resend."
     });
   }
 
