@@ -137,8 +137,7 @@ export async function createEnrollment(payload: unknown, context: EnrollmentCont
   });
 
   if (enrollment.access?.userId) {
-    await sendPasswordResetLink(enrollment.access.userId, "setup");
-    enrollment.access.setupEmailSent = true;
+    enrollment.access.setupEmailSent = await sendPasswordResetLink(enrollment.access.userId, "setup");
   }
 
   if (!shouldGeneratePix) {

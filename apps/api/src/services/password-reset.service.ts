@@ -43,7 +43,7 @@ export async function sendPasswordResetLink(userId: string, reason: "reset" | "s
     select: { id: true, email: true, name: true, isActive: true }
   });
 
-  if (!user || !user.isActive) return;
+  if (!user || !user.isActive) return false;
 
   const token = randomBytes(32).toString("hex");
   const expiresAt = addMinutes(new Date(), RESET_TOKEN_EXPIRES_MINUTES);
@@ -73,12 +73,18 @@ ${resetUrl}
 
 O link expira em ${RESET_TOKEN_EXPIRES_MINUTES} minutos.`;
 
-  await sendMail({
-    to: user.email,
-    subject,
-    text,
-    html: `<p>Olá, ${user.name}.</p><p><a href="${resetUrl}">${buttonText}</a></p><p>O link expira em ${RESET_TOKEN_EXPIRES_MINUTES} minutos.</p>`
-  });
+  try {
+    await sendMail({
+      to: user.email,
+      subject,
+      text,
+      html: `<p>Olá, ${user.name}.</p><p><a href="${resetUrl}">${buttonText}</a></p><p>O link expira em ${RESET_TOKEN_EXPIRES_MINUTES} minutos.</p>`
+    });
+    return true;
+  } catch (error) {
+    console.error("Falha ao enviar e-mail de redefinição de senha.", error);
+    return false;
+  }
 }
 
 export async function requestPasswordReset(email: string) {

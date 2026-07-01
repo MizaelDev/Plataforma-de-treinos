@@ -8,6 +8,17 @@ import { appConfig } from "@/lib/app-config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 
+async function readApiPayload(response: Response) {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text) as { message?: string };
+  } catch {
+    return {};
+  }
+}
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -26,11 +37,13 @@ export default function ForgotPasswordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email })
       });
-      const payload = await response.json();
+      const payload = await readApiPayload(response);
+
       if (!response.ok) {
         setError(payload.message ?? "Não foi possível solicitar a redefinição.");
         return;
       }
+
       setMessage(payload.message ?? "Se o e-mail estiver cadastrado, enviaremos um link.");
     } catch {
       setError("Não foi possível conectar com a API.");

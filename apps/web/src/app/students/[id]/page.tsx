@@ -162,13 +162,15 @@ export default function StudentDetailPage() {
     setSuccess("");
     setSavingAccess(true);
     try {
-      const payload = await api<{ access: { userId: string; email: string; created: boolean; isActive: boolean; setupEmailSent: boolean } }>(`/students/${student.id}/access`, { method: "POST" });
-      setStudent((current) => current ? { ...current, user: { id: payload.access.userId, email: payload.access.email, isActive: payload.access.isActive } } : current);
-      setSuccess(
-        payload.access.created
-          ? `Acesso criado. Enviamos um link para ${payload.access.email} definir a senha.`
-          : `Link de redefinição enviado para ${payload.access.email}.`
-      );
+        const payload = await api<{ access: { userId: string; email: string; created: boolean; isActive: boolean; setupEmailSent: boolean } }>(`/students/${student.id}/access`, { method: "POST" });
+        setStudent((current) => current ? { ...current, user: { id: payload.access.userId, email: payload.access.email, isActive: payload.access.isActive } } : current);
+        setSuccess(
+          payload.access.setupEmailSent
+            ? payload.access.created
+              ? `Acesso criado. Enviamos um link para ${payload.access.email} definir a senha.`
+              : `Link de redefinição enviado para ${payload.access.email}.`
+            : `Acesso atualizado, mas o e-mail não foi enviado. Confira as configurações de SMTP.`
+        );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {

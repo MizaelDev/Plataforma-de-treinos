@@ -118,8 +118,7 @@ export async function createStudent(payload: unknown, context: StudentContext) {
   });
 
   if (result.access?.userId) {
-    await sendPasswordResetLink(result.access.userId, "setup");
-    result.access.setupEmailSent = true;
+    result.access.setupEmailSent = await sendPasswordResetLink(result.access.userId, "setup");
   }
 
   return result;
@@ -245,6 +244,6 @@ export async function createOrResetStudentAccess(id: string, context: StudentCon
     return { user, created: true };
   });
 
-  await sendPasswordResetLink(result.user.id, "setup");
-  return { ...result, setupEmailSent: true };
+  const setupEmailSent = await sendPasswordResetLink(result.user.id, "setup");
+  return { ...result, setupEmailSent };
 }

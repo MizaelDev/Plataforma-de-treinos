@@ -110,7 +110,7 @@ export default function EnrollmentsPage() {
     setSaving(true);
 
     try {
-      const payload = await api<{ enrollment: { student: { id: string }; paymentTransaction?: PaymentTransaction; paymentError?: string } }>("/enrollments", {
+      const payload = await api<{ enrollment: { student: { id: string }; access?: { setupEmailSent: boolean } | null; paymentTransaction?: PaymentTransaction; paymentError?: string } }>("/enrollments", {
         method: "POST",
         body: JSON.stringify({
           student: {
@@ -140,11 +140,12 @@ export default function EnrollmentsPage() {
       setForm(initialForm());
       setCreatedStudentId(payload.enrollment.student.id);
       setCreatedPayment(payload.enrollment.paymentTransaction ?? null);
-      setSuccess(
-        payload.enrollment.paymentError
-          ? `Matrícula criada, mas o Pix não foi gerado: ${payload.enrollment.paymentError}`
-          : "Matrícula concluída com sucesso. Você pode registrar a avaliação agora ou fazer depois."
-      );
+      const accessMessage =
+        payload.enrollment.access && !payload.enrollment.access.setupEmailSent
+          ? " O acesso do aluno foi criado, mas o e-mail de definição de senha não foi enviado. Confira as configurações de SMTP."
+          : "";
+      const pixMessage = payload.enrollment.paymentError ? ` O Pix não foi gerado: ${payload.enrollment.paymentError}` : "";
+      setSuccess(`Matrícula concluída com sucesso.${accessMessage}${pixMessage} Você pode registrar a avaliação agora ou fazer depois.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
