@@ -169,7 +169,7 @@ export default function StudentDetailPage() {
             ? payload.access.created
               ? `Acesso criado. Enviamos um link para ${payload.access.email} definir a senha.`
               : `Link de redefinição enviado para ${payload.access.email}.`
-            : `Acesso atualizado, mas o e-mail não foi enviado. Confira as configurações de e-mail${payload.access.setupEmailError ? `: ${payload.access.setupEmailError}` : "."}`
+            : `Acesso atualizado, mas o e-mail não foi entregue. Tente reenviar o link em alguns instantes${payload.access.setupEmailError ? ` Detalhe: ${payload.access.setupEmailError}` : "."}`
         );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { enrollmentModalities } from "@academia/shared";
 import { AppShell } from "@/components/app-shell";
@@ -64,6 +64,7 @@ const initialForm = () => ({
 
 export default function EnrollmentsPage() {
   const router = useRouter();
+  const feedbackRef = useRef<HTMLDivElement>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(true);
@@ -81,6 +82,12 @@ export default function EnrollmentsPage() {
   }, []);
 
   const selectedPlan = useMemo(() => plans.find((plan) => plan.id === form.planId) ?? null, [form.planId, plans]);
+
+  function showFeedback() {
+    window.requestAnimationFrame(() => {
+      feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   function toggleModality(modality: string) {
     setForm((current) => ({
@@ -142,12 +149,14 @@ export default function EnrollmentsPage() {
       setCreatedPayment(payload.enrollment.paymentTransaction ?? null);
       const accessMessage =
         payload.enrollment.access && !payload.enrollment.access.setupEmailSent
-          ? ` O acesso do aluno foi criado, mas o e-mail de definição de senha não foi enviado. Confira as configurações de e-mail${payload.enrollment.access.setupEmailError ? `: ${payload.enrollment.access.setupEmailError}` : "."}`
+          ? ` O acesso do aluno foi criado, mas o e-mail de definição de senha não foi entregue. Tente reenviar pelo perfil do aluno${payload.enrollment.access.setupEmailError ? ` Detalhe: ${payload.enrollment.access.setupEmailError}` : "."}`
           : "";
       const pixMessage = payload.enrollment.paymentError ? ` O Pix não foi gerado: ${payload.enrollment.paymentError}` : "";
       setSuccess(`Matrícula concluída com sucesso.${accessMessage}${pixMessage} Você pode registrar a avaliação agora ou fazer depois.`);
+      showFeedback();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
+      showFeedback();
     } finally {
       setSaving(false);
     }
@@ -181,7 +190,7 @@ export default function EnrollmentsPage() {
 
   return (
     <AppShell>
-      <header className="mb-6">
+      <header ref={feedbackRef} className="mb-6 scroll-mt-6">
         <p className="text-sm font-semibold text-brand">Cadastro rápido</p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">Nova Matrícula</h1>
         <p className="mt-1 text-sm text-muted">Cadastre o aluno, vincule um plano e gere a primeira mensalidade em um único fluxo.</p>
