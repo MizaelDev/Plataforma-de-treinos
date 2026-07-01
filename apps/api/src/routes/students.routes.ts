@@ -6,6 +6,7 @@ import { safePaymentTransactionSelect } from "../services/payments.service.js";
 import { prisma } from "../services/prisma.js";
 import { createOrResetStudentAccess, createStudent, updateStudent } from "../services/students.service.js";
 import { changeStudentCurrentPlan } from "../services/student-plans.service.js";
+import { releaseDeletedStudentIdentity } from "../services/student-identity.service.js";
 import { asyncRoute } from "../utils/async-route.js";
 import { requiredParam } from "../utils/http.js";
 
@@ -215,7 +216,7 @@ studentsRouter.delete(
     const id = requiredParam(request, "id");
     const student = await prisma.student.findFirst({
       where: { id, organizationId: request.user!.organizationId, deletedAt: null },
-      select: { id: true, userId: true }
+      select: { id: true, userId: true, cpfHash: true, email: true }
     });
 
     if (!student) {
@@ -237,6 +238,12 @@ studentsRouter.delete(
           ]
         : [])
     ]);
+
+    await releaseDeletedStudentIdentity({
+      organizationId: request.user!.organizationId,
+      cpfHash: student.cpfHash,
+      email: student.email
+    });
 
     await auditLog({
       organizationId: request.user!.organizationId,

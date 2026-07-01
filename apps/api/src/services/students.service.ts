@@ -6,6 +6,7 @@ import { hashCpf, normalizeCpf } from "../utils/cpf.js";
 import { AppError } from "../utils/errors.js";
 import { prisma } from "./prisma.js";
 import { sendPasswordResetLink } from "./password-reset.service.js";
+import { releaseDeletedStudentIdentity } from "./student-identity.service.js";
 
 type StudentContext = {
   organizationId: string;
@@ -56,6 +57,12 @@ function buildStudentData(input: StudentInput, context: StudentContext) {
 export async function createStudent(payload: unknown, context: StudentContext) {
   const input = studentSchema.parse(payload);
   const data = buildStudentData(input, context);
+
+  await releaseDeletedStudentIdentity({
+    organizationId: context.organizationId,
+    cpfHash: data.cpfHash,
+    email: data.email
+  });
 
   const duplicatedStudent = await prisma.student.findUnique({
     where: {
@@ -134,6 +141,12 @@ export async function updateStudent(id: string, payload: unknown, context: Stude
   }
 
   if (cpfHash) {
+    await releaseDeletedStudentIdentity({
+      organizationId: context.organizationId,
+      cpfHash,
+      email: input.email
+    });
+
     const duplicatedStudent = await prisma.student.findUnique({
       where: {
         organizationId_cpfHash: {

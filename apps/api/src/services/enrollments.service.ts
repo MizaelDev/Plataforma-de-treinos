@@ -7,6 +7,7 @@ import { AppError } from "../utils/errors.js";
 import { prisma } from "./prisma.js";
 import { createPixPayment } from "./payments.service.js";
 import { sendPasswordResetLink } from "./password-reset.service.js";
+import { releaseDeletedStudentIdentity } from "./student-identity.service.js";
 
 type EnrollmentContext = {
   organizationId: string;
@@ -36,6 +37,12 @@ export async function createEnrollment(payload: unknown, context: EnrollmentCont
   const shouldGeneratePix = input.invoice.paymentMode === "PIX_MERCADO_PAGO";
   const invoiceStatus = shouldGeneratePix ? "PENDENTE" : input.invoice.status;
   const paidAt = invoiceStatus === "PAGO" ? parseDate(input.invoice.paidAt || new Date().toISOString(), "Data de pagamento")! : null;
+
+  await releaseDeletedStudentIdentity({
+    organizationId: context.organizationId,
+    cpfHash,
+    email
+  });
 
   const [duplicatedStudent, plan, existingUser] = await Promise.all([
     prisma.student.findUnique({
