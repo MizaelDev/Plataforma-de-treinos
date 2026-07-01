@@ -1,7 +1,7 @@
 ﻿import { Router } from "express";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { auditLog } from "../services/audit.service.js";
-import { calculateInvoiceCharges } from "../services/finance.service.js";
+import { calculateInvoiceChargesWithSettings, getFinancialSettings } from "../services/finance.service.js";
 import { safePaymentTransactionSelect } from "../services/payments.service.js";
 import { prisma } from "../services/prisma.js";
 import { createOrResetStudentAccess, createStudent, updateStudent } from "../services/students.service.js";
@@ -118,15 +118,15 @@ studentsRouter.get(
       return;
     }
 
+    const financialSettings = await getFinancialSettings(request.user!.organizationId);
+
     response.json({
       student: {
         ...removeInternalStudentFields(student),
-        invoices: await Promise.all(
-          student.invoices.map(async (invoice) => ({
+        invoices: student.invoices.map((invoice) => ({
             ...invoice,
-            charges: await calculateInvoiceCharges(request.user!.organizationId, invoice.dueDate, invoice.amount)
+            charges: calculateInvoiceChargesWithSettings(financialSettings, invoice.dueDate, invoice.amount)
           }))
-        )
       }
     });
   })

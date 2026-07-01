@@ -1,6 +1,6 @@
 ﻿import { Router } from "express";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
-import { calculateInvoiceCharges } from "../services/finance.service.js";
+import { calculateInvoiceChargesWithSettings, getFinancialSettings } from "../services/finance.service.js";
 import { safePaymentTransactionSelect } from "../services/payments.service.js";
 import { getActivePlanAccess } from "../services/plan-access.service.js";
 import { prisma } from "../services/prisma.js";
@@ -168,12 +168,11 @@ studentAreaRouter.get(
       return;
     }
 
-    const invoicesWithCharges = await Promise.all(
-      latestInvoices.map(async (invoice) => ({
+    const financialSettings = await getFinancialSettings(organizationId);
+    const invoicesWithCharges = latestInvoices.map((invoice) => ({
         ...invoice,
-        charges: await calculateInvoiceCharges(organizationId, invoice.dueDate, invoice.amount)
-      }))
-    );
+        charges: calculateInvoiceChargesWithSettings(financialSettings, invoice.dueDate, invoice.amount)
+      }));
     const activeStudentPlan = student.studentPlans[0] ?? null;
     const latestInvoiceWithPlan = latestInvoices.find((invoice) => invoice.plan);
     const currentPlan = activeStudentPlan?.plan ?? latestInvoiceWithPlan?.plan ?? null;
@@ -192,7 +191,7 @@ studentAreaRouter.get(
       plan: currentPlan,
       nextInvoice,
       nextDueDate,
-      nextInvoiceCharges: nextInvoice ? await calculateInvoiceCharges(organizationId, nextInvoice.dueDate, nextInvoice.amount) : null,
+      nextInvoiceCharges: nextInvoice ? calculateInvoiceChargesWithSettings(financialSettings, nextInvoice.dueDate, nextInvoice.amount) : null,
       financialStatus: overdueCount > 0 ? "INADIMPLENTE" : "EM_DIA",
       latestInvoices: invoicesWithCharges,
       planAccess,
@@ -218,13 +217,13 @@ studentAreaRouter.get(
       orderBy: { dueDate: "desc" }
     });
 
+    const financialSettings = await getFinancialSettings(organizationId);
+
     response.json({
-      invoices: await Promise.all(
-        invoices.map(async (invoice) => ({
-          ...invoice,
-          charges: await calculateInvoiceCharges(organizationId, invoice.dueDate, invoice.amount)
-        }))
-      )
+      invoices: invoices.map((invoice) => ({
+        ...invoice,
+        charges: calculateInvoiceChargesWithSettings(financialSettings, invoice.dueDate, invoice.amount)
+      }))
     });
   })
 );

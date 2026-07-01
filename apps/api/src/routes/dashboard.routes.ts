@@ -1,6 +1,6 @@
 ﻿import { Router } from "express";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
-import { calculateInvoiceCharges } from "../services/finance.service.js";
+import { calculateInvoiceChargesWithSettings, getFinancialSettings } from "../services/finance.service.js";
 import { prisma } from "../services/prisma.js";
 import { asyncRoute } from "../utils/async-route.js";
 
@@ -79,26 +79,24 @@ dashboardRouter.get(
       })
     ]);
 
-    const dueSoonInvoicesWithCharges = await Promise.all(
-      dueSoonInvoices.map(async (invoice) => ({
-        ...invoice,
-        charges: await calculateInvoiceCharges(organizationId, invoice.dueDate, invoice.amount)
-      }))
-    );
+    const financialSettings = await getFinancialSettings(organizationId);
 
-    const delinquentStudentRowsWithCharges = await Promise.all(
-      delinquentStudentRows.map(async (student) => ({
+    const dueSoonInvoicesWithCharges = dueSoonInvoices.map((invoice) => ({
+        ...invoice,
+        charges: calculateInvoiceChargesWithSettings(financialSettings, invoice.dueDate, invoice.amount)
+      }));
+
+    const delinquentStudentRowsWithCharges = delinquentStudentRows.map((student) => ({
         id: student.id,
         fullName: student.fullName,
         phone: student.phone,
         oldestInvoice: student.invoices[0]
           ? {
               ...student.invoices[0],
-              charges: await calculateInvoiceCharges(organizationId, student.invoices[0].dueDate, student.invoices[0].amount)
+              charges: calculateInvoiceChargesWithSettings(financialSettings, student.invoices[0].dueDate, student.invoices[0].amount)
             }
           : null
-      }))
-    );
+      }));
 
     response.json({
       activeStudents,
@@ -179,13 +177,13 @@ dashboardRouter.get(
       })
     ]);
 
+    const studentFinancialSettings = nextInvoice ? await getFinancialSettings(request.user!.organizationId) : null;
+
     response.json({
       student,
       plan: student?.studentPlans[0]?.plan ?? null,
       nextInvoice,
-      nextInvoiceCharges: nextInvoice
-        ? await calculateInvoiceCharges(request.user!.organizationId, nextInvoice.dueDate, nextInvoice.amount)
-        : null,
+      nextInvoiceCharges: nextInvoice && studentFinancialSettings ? calculateInvoiceChargesWithSettings(studentFinancialSettings, nextInvoice.dueDate, nextInvoice.amount) : null,
       financialStatus: overdueInvoices > 0 ? "INADIMPLENTE" : "EM_DIA",
       activeWorkout
     });

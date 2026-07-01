@@ -1,4 +1,10 @@
-﻿const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
+const GET_CACHE_TTL_MS = 15_000;
+const getCache = new Map<string, { expiresAt: number; promise: Promise<unknown> }>();
+
+function isCacheableGet(path: string) {
+  return !path.startsWith("/payments") && !path.startsWith("/dev");
+}
 
 export type SessionUser = {
   id: string;
@@ -15,6 +21,7 @@ export function getToken() {
 }
 
 export function setSession(token: string, user: SessionUser) {
+  getCache.clear();
   window.localStorage.setItem("academia.token", token);
   window.localStorage.setItem("academia.user", JSON.stringify(user));
 }
@@ -35,9 +42,36 @@ export function getStoredUser() {
 export function clearSession() {
   window.localStorage.removeItem("academia.token");
   window.localStorage.removeItem("academia.user");
+  getCache.clear();
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const cacheKey = method === "GET" && isCacheableGet(path) ? path : "";
+  const cached = cacheKey ? getCache.get(cacheKey) : undefined;
+
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.promise as Promise<T>;
+  }
+
+  if (method !== "GET") {
+    getCache.clear();
+  }
+
+  const request = requestApi<T>(path, init);
+
+  if (cacheKey) {
+    getCache.set(cacheKey, {
+      expiresAt: Date.now() + GET_CACHE_TTL_MS,
+      promise: request
+    });
+    request.catch(() => getCache.delete(cacheKey));
+  }
+
+  return request;
+}
+
+async function requestApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const response = await fetch(`${API_URL}${path}`, {
     ...init,

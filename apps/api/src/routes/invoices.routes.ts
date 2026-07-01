@@ -2,7 +2,7 @@ import { Router } from "express";
 import { invoiceSchema } from "@academia/shared";
 import { requireAuth, requireRoles } from "../middlewares/auth.js";
 import { auditLog } from "../services/audit.service.js";
-import { calculateInvoiceCharges } from "../services/finance.service.js";
+import { calculateInvoiceCharges, calculateInvoiceChargesWithSettings, getFinancialSettings } from "../services/finance.service.js";
 import { safePaymentTransactionSelect } from "../services/payments.service.js";
 import { prisma } from "../services/prisma.js";
 import { asyncRoute } from "../utils/async-route.js";
@@ -31,12 +31,11 @@ invoicesRouter.get(
       orderBy: { dueDate: "desc" }
     });
 
-    const invoicesWithCharges = await Promise.all(
-      invoices.map(async (invoice) => ({
+    const financialSettings = await getFinancialSettings(request.user!.organizationId);
+    const invoicesWithCharges = invoices.map((invoice) => ({
         ...invoice,
-        charges: await calculateInvoiceCharges(invoice.organizationId, invoice.dueDate, invoice.amount)
-      }))
-    );
+        charges: calculateInvoiceChargesWithSettings(financialSettings, invoice.dueDate, invoice.amount)
+      }));
 
     response.json({ invoices: invoicesWithCharges });
   })

@@ -3,11 +3,18 @@ import { prisma } from "./prisma.js";
 
 const money = (value: Prisma.Decimal.Value) => new Prisma.Decimal(value).toDecimalPlaces(2);
 
-export async function calculateInvoiceCharges(organizationId: string, dueDate: Date, amount: Prisma.Decimal.Value) {
-  const settings =
+export async function getFinancialSettings(organizationId: string) {
+  return (
     (await prisma.financialSettings.findUnique({ where: { organizationId } })) ??
-    (await prisma.financialSettings.create({ data: { organizationId } }));
+    (await prisma.financialSettings.create({ data: { organizationId } }))
+  );
+}
 
+export function calculateInvoiceChargesWithSettings(
+  settings: Awaited<ReturnType<typeof getFinancialSettings>>,
+  dueDate: Date,
+  amount: Prisma.Decimal.Value
+) {
   const today = new Date();
   const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const normalizedDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
@@ -35,4 +42,9 @@ export async function calculateInvoiceCharges(organizationId: string, dueDate: D
     total: money(total),
     overdueDays
   };
+}
+
+export async function calculateInvoiceCharges(organizationId: string, dueDate: Date, amount: Prisma.Decimal.Value) {
+  const settings = await getFinancialSettings(organizationId);
+  return calculateInvoiceChargesWithSettings(settings, dueDate, amount);
 }
