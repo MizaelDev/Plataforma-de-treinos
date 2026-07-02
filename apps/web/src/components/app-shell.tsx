@@ -8,16 +8,31 @@ import { BrandLogo } from "@/components/brand-logo";
 import { clearSession, getStoredUser, type SessionUser } from "@/lib/api";
 import { appConfig } from "@/lib/app-config";
 
-const links = [
-  { href: "/", label: "Dashboard", icon: BarChart3 },
-  { href: "/enrollments", label: "Nova Matrícula", icon: UserPlus },
-  { href: "/students", label: "Alunos", icon: Users },
-  { href: "/plans", label: "Planos", icon: Dumbbell },
-  { href: "/invoices", label: "Mensalidades", icon: CreditCard },
-  { href: "/assessments", label: "Avaliações", icon: Activity },
-  { href: "/workouts", label: "Treinos", icon: ClipboardList },
-  { href: "/exercises", label: "Biblioteca", icon: BookOpen },
-  { href: "/settings", label: "Configurações", icon: Settings }
+const navigationGroups = [
+  {
+    title: "Principal",
+    links: [
+      { href: "/", label: "Dashboard", icon: BarChart3 },
+      { href: "/enrollments", label: "Nova Matrícula", icon: UserPlus },
+      { href: "/students", label: "Alunos", icon: Users }
+    ]
+  },
+  {
+    title: "Financeiro",
+    links: [
+      { href: "/plans", label: "Planos", icon: Dumbbell },
+      { href: "/invoices", label: "Mensalidades", icon: CreditCard },
+      { href: "/settings", label: "Configurações", icon: Settings }
+    ]
+  },
+  {
+    title: "Treinamento",
+    links: [
+      { href: "/assessments", label: "Avaliações", icon: Activity },
+      { href: "/workouts", label: "Treinos", icon: ClipboardList },
+      { href: "/exercises", label: "Biblioteca", icon: BookOpen }
+    ]
+  }
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -49,24 +64,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const navigation = (
-    <nav className="space-y-1">
-      {links.map((link) => {
-        const Icon = link.icon;
-        const active = pathname === link.href;
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            onClick={() => setMobileOpen(false)}
-            className={`flex h-10 items-center gap-3 rounded-md px-3 text-sm font-semibold transition ${
-              active ? "bg-brand text-white shadow-sm shadow-orange-950/20" : "text-stone-300 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <Icon className="h-4 w-4" />
-            {link.label}
-          </Link>
-        );
-      })}
+    <nav className="space-y-6">
+      {navigationGroups.map((group) => (
+        <div key={group.title}>
+          <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">{group.title}</p>
+          <div className="space-y-1">
+            {group.links.map((link) => {
+              const Icon = link.icon;
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex h-10 items-center gap-3 rounded-md px-3 text-sm font-semibold transition ${
+                    active
+                      ? "bg-brand text-white shadow-sm shadow-orange-950/30"
+                      : "text-stone-300 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   );
 
@@ -80,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#efeeeb]">
-      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-72 border-r border-black bg-[#14110f] px-5 py-5 lg:block">
+      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-72 border-r border-orange-500/10 bg-[#100d0b] px-5 py-5 lg:block">
         <div className="mb-8 flex items-center gap-3">
           <BrandLogo />
           <div>
@@ -102,7 +126,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button type="button" aria-label="Fechar menu" className="absolute inset-0 bg-black/30" onClick={() => setMobileOpen(false)} />
-          <aside className="relative h-full w-80 max-w-[85vw] border-r border-black bg-[#14110f] p-5 shadow-xl">
+          <aside className="relative h-full w-80 max-w-[85vw] border-r border-orange-500/10 bg-[#100d0b] p-5 shadow-xl">
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <BrandLogo compact />
@@ -126,8 +150,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button type="button" aria-label="Abrir menu" className="rounded-md p-2 text-gray-600 hover:bg-gray-50 lg:hidden" onClick={() => setMobileOpen(true)}>
               <Menu className="h-5 w-5" />
             </button>
-            <div className="hidden items-center gap-2 text-sm font-semibold text-stone-700 lg:flex">
-              <PanelLeftClose className="h-4 w-4 text-muted" />
+            <div className="hidden items-center gap-2 text-sm font-semibold text-stone-200 lg:flex">
+              <PanelLeftClose className="h-4 w-4 text-brand" />
               Painel administrativo
             </div>
             <div className="ml-auto flex items-center gap-3">

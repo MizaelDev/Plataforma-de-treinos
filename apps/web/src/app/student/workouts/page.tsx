@@ -63,7 +63,7 @@ function ExerciseCard({ exercise, index, onOpen }: { exercise: ExerciseSummary; 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-300">{exerciseSummary(exercise)}</p>
             </div>
             <Button type="button" variant="secondary" className="h-9 px-3" onClick={() => onOpen(exercise)}>
-              Ver detalhes
+              {library?.mediaUrl ? "Assistir" : "Ver detalhes"}
             </Button>
           </div>
 
@@ -196,7 +196,7 @@ export default function StudentWorkoutsPage() {
   return (
     <StudentShell>
       <header className="mb-6">
-        <p className="text-sm font-semibold text-gray-700">Treinos</p>
+        <p className="text-sm font-semibold text-brand">Treinos</p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">Minha ficha de treino</h1>
         <p className="mt-1 text-sm text-muted">Treinos, exercícios, cargas e demonstrações em vídeo, GIF ou imagem.</p>
       </header>
@@ -235,7 +235,7 @@ export default function StudentWorkoutsPage() {
                     type="button"
                     onClick={() => setSelectedDay(label)}
                     className={`min-w-24 rounded-md border px-3 py-2 text-left text-sm font-semibold transition ${
-                      active ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      active ? "border-orange-500/55 bg-orange-500/15 text-white" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     Treino {label}

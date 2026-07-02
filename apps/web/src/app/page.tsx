@@ -7,7 +7,7 @@ import { Activity, AlertTriangle, CalendarClock, CircleDollarSign, ClipboardList
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { api, getStoredUser, getToken } from "@/lib/api";
-import { Alert, EmptyState, LoadingState, SectionCard, StatusBadge } from "@/components/ui";
+import { Alert, Button, EmptyState, LoadingState, SectionCard, StatusBadge } from "@/components/ui";
 import { formatCurrency, formatDate, formatPhone } from "@/lib/format";
 
 type Invoice = {
@@ -44,23 +44,42 @@ type Dashboard = {
   latestStudents: DashboardStudent[];
 };
 
-function QuickAction({ href, label, icon: Icon }: { href: string; label: string; icon: typeof Plus }) {
+function QuickAction({ href, label, icon: Icon, primary = false }: { href: string; label: string; icon: typeof Plus; primary?: boolean }) {
   return (
-    <Link href={href} className="flex h-10 items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50">
+    <Link
+      href={href}
+      className={`flex h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold transition ${
+        primary
+          ? "bg-brand text-white shadow-sm shadow-orange-950/30 hover:bg-brandDark"
+          : "border border-[#ded7cf] bg-[#fffdfa] text-gray-800 hover:border-orange-300 hover:bg-orange-50"
+      }`}
+    >
       <Icon className="h-4 w-4" />
       {label}
     </Link>
   );
 }
 
-function ListPanel({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
+function ListPanel({
+  title,
+  emptyTitle,
+  empty,
+  action,
+  children
+}: {
+  title: string;
+  emptyTitle: string;
+  empty: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   const hasItems = Array.isArray(children) ? children.length > 0 : Boolean(children);
   return (
     <SectionCard className="overflow-hidden">
       <div className="border-b border-gray-200 px-4 py-3">
         <p className="text-sm font-semibold text-ink">{title}</p>
       </div>
-      {hasItems ? <div className="divide-y divide-gray-100">{children}</div> : <div className="p-4"><EmptyState title="Sem registros" description={empty} /></div>}
+      {hasItems ? <div className="divide-y divide-gray-100">{children}</div> : <div className="p-4"><EmptyState title={emptyTitle} description={empty} action={action} /></div>}
     </SectionCard>
   );
 }
@@ -96,8 +115,9 @@ export default function AdminDashboardPage() {
           <h1 className="mt-1 text-2xl font-semibold text-ink">Dashboard</h1>
           <p className="mt-1 text-sm text-muted">Indicadores operacionais e financeiro do mês.</p>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <QuickAction href="/students" label="Novo aluno" icon={UserPlus} />
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <QuickAction href="/enrollments" label="Nova Matrícula" icon={UserPlus} primary />
+          <QuickAction href="/students" label="Novo aluno" icon={Users} />
           <QuickAction href="/invoices" label="Nova mensalidade" icon={CreditCard} />
           <QuickAction href="/assessments" label="Nova avaliação" icon={Activity} />
           <QuickAction href="/workouts" label="Novo treino" icon={ClipboardList} />
@@ -111,15 +131,15 @@ export default function AdminDashboardPage() {
       ) : (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <StatCard icon={Users} label="Alunos ativos" value={data?.activeStudents ?? 0} tone="brand" />
-            <StatCard icon={CalendarClock} label="Vencendo em 7 dias" value={data?.dueSoon ?? 0} tone="blue" />
-            <StatCard icon={AlertTriangle} label="Mensalidades em atraso" value={data?.overdue ?? 0} tone="red" />
-            <StatCard icon={CircleDollarSign} label="Receita do mês" value={formatCurrency(data?.monthRevenue ?? 0)} tone="gray" />
-            <StatCard icon={WalletCards} label="Alunos inadimplentes" value={data?.delinquentStudents ?? 0} tone="amber" />
+            <StatCard icon={Users} label="Alunos ativos" value={data?.activeStudents ?? 0} description="Atualizado hoje" tone="brand" />
+            <StatCard icon={CalendarClock} label="Vencendo em 7 dias" value={data?.dueSoon ?? 0} description={(data?.dueSoon ?? 0) > 0 ? "Cobranças próximas" : "Nenhuma cobrança próxima"} tone="blue" />
+            <StatCard icon={AlertTriangle} label="Mensalidades em atraso" value={data?.overdue ?? 0} description={(data?.overdue ?? 0) > 0 ? "Requer acompanhamento" : "Tudo em dia"} tone="red" />
+            <StatCard icon={CircleDollarSign} label="Receita do mês" value={formatCurrency(data?.monthRevenue ?? 0)} description="Pagamentos confirmados" tone="gray" />
+            <StatCard icon={WalletCards} label="Alunos inadimplentes" value={data?.delinquentStudents ?? 0} description={(data?.delinquentStudents ?? 0) > 0 ? "Com mensalidades vencidas" : "Sem pendências críticas"} tone="amber" />
           </section>
 
           <section className="mt-6 grid gap-4 xl:grid-cols-2">
-            <ListPanel title="Mensalidades vencendo" empty="Nenhuma mensalidade vence nos próximos 7 dias.">
+            <ListPanel title="Mensalidades vencendo" emptyTitle="Nenhuma cobrança próxima" empty="Nenhuma mensalidade vence nos próximos 7 dias." action={<Button type="button" variant="secondary" onClick={() => router.push("/invoices")}>Criar mensalidade</Button>}>
               {(data?.dueSoonInvoices ?? []).map((invoice) => (
                 <div key={invoice.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <div>
@@ -134,7 +154,7 @@ export default function AdminDashboardPage() {
               ))}
             </ListPanel>
 
-            <ListPanel title="Alunos inadimplentes" empty="Nenhum aluno inadimplente no momento.">
+            <ListPanel title="Alunos inadimplentes" emptyTitle="Tudo em dia por aqui" empty="Quando houver alunos inadimplentes, eles aparecerão nesta lista.">
               {(data?.delinquentStudentRows ?? []).map((student) => (
                 <div key={student.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <div>
@@ -149,7 +169,7 @@ export default function AdminDashboardPage() {
               ))}
             </ListPanel>
 
-            <ListPanel title="Últimos pagamentos" empty="Nenhum pagamento registrado ainda.">
+            <ListPanel title="Últimos pagamentos" emptyTitle="Nenhum pagamento registrado" empty="Assim que uma mensalidade for marcada como paga, ela aparecerá aqui.">
               {(data?.latestPayments ?? []).map((invoice) => (
                 <div key={invoice.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <div>
@@ -161,7 +181,7 @@ export default function AdminDashboardPage() {
               ))}
             </ListPanel>
 
-            <ListPanel title="Últimos alunos cadastrados" empty="Nenhum aluno cadastrado ainda.">
+            <ListPanel title="Últimos alunos cadastrados" emptyTitle="Nenhum aluno cadastrado ainda" empty="Comece criando a primeira matrícula com plano e mensalidade inicial." action={<Button type="button" onClick={() => router.push("/enrollments")}>Nova matrícula</Button>}>
               {(data?.latestStudents ?? []).map((student) => (
                 <div key={student.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <div>

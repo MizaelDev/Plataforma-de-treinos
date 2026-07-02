@@ -56,11 +56,14 @@ export function ExerciseMedia({ mediaType, mediaUrl, thumbnailUrl, videoProvider
   }
 
   if (mediaType === "VIDEO") {
-    if (compact && thumbnailUrl) {
+    if (compact) {
       return (
-        <button type="button" onClick={onOpen} className={`${wrapperClass} group relative block w-full text-left`}>
-          <img src={thumbnailUrl} alt={title} loading="lazy" className={`${heightClass} w-full object-cover opacity-80 transition group-hover:scale-[1.02]`} />
-          <PlayCircle className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow" />
+        <button type="button" onClick={onOpen} className={`${wrapperClass} group relative flex ${heightClass} w-full items-center justify-center text-left`}>
+          {thumbnailUrl ? <img src={thumbnailUrl} alt={title} loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-75 transition group-hover:scale-[1.02]" /> : null}
+          <div className="relative flex flex-col items-center rounded-lg border border-white/10 bg-[#100d0b]/92 px-4 py-3 text-center shadow-sm">
+            <PlayCircle className="h-9 w-9 text-brand" />
+            <span className="mt-2 text-sm font-semibold text-white">Assistir</span>
+          </div>
         </button>
       );
     }

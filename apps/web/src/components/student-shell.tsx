@@ -54,27 +54,29 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
 
   const navigation = (
     <nav className="flex flex-col gap-1 md:flex-row">
-      {links.filter((link) => {
-        if (link.feature === "assessments") return planAccess?.allowAssessments ?? false;
-        if (link.feature === "workouts") return planAccess?.allowWorkouts ?? false;
-        return true;
-      }).map((link) => {
-        const Icon = link.icon;
-        const active = pathname === link.href;
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            onClick={() => setMenuOpen(false)}
-            className={`flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold transition ${
-              active ? "bg-brand text-white shadow-sm shadow-orange-950/20" : "text-stone-300 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <Icon className="h-4 w-4" />
-            {link.label}
-          </Link>
-        );
-      })}
+      {links
+        .filter((link) => {
+          if (link.feature === "assessments") return planAccess?.allowAssessments ?? false;
+          if (link.feature === "workouts") return planAccess?.allowWorkouts ?? false;
+          return true;
+        })
+        .map((link) => {
+          const Icon = link.icon;
+          const active = pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setMenuOpen(false)}
+              className={`flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold transition ${
+                active ? "bg-brand text-white shadow-sm shadow-orange-950/20" : "text-stone-300 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {link.label}
+            </Link>
+          );
+        })}
     </nav>
   );
 
@@ -88,7 +90,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-admin-main min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-[#ded7cf] bg-[#fffdfa]/95 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-[#ded7cf] bg-[#100d0b]/88 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link href="/student/dashboard" className="flex items-center gap-3">
             <BrandLogo compact />
@@ -115,7 +117,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
       {menuOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <button type="button" className="absolute inset-0 bg-black/30" aria-label="Fechar menu" onClick={() => setMenuOpen(false)} />
-          <aside className="relative ml-auto h-full w-80 max-w-[86vw] border-l border-black bg-[#14110f] p-5 shadow-xl">
+          <aside className="relative ml-auto h-full w-80 max-w-[86vw] border-l border-orange-500/10 bg-[#100d0b] p-5 shadow-xl">
             <div className="mb-5 flex items-center justify-between">
               <p className="text-sm font-semibold text-white">Menu do aluno</p>
               <button type="button" className="rounded-md p-2 text-stone-300 hover:bg-white/10" aria-label="Fechar menu" onClick={() => setMenuOpen(false)}>

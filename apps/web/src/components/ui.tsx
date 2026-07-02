@@ -13,9 +13,9 @@ export function Button({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" }) {
   const variants = {
-    primary: "bg-brand text-white shadow-sm shadow-orange-900/10 hover:bg-brandDark disabled:bg-orange-300",
-    secondary: "border border-[#ded7cf] bg-[#fffdfa] text-gray-800 hover:border-orange-200 hover:bg-orange-50 disabled:text-gray-400",
-    danger: "border border-red-200 bg-white text-danger hover:bg-red-50 disabled:text-red-300"
+    primary: "bg-brand text-white shadow-sm shadow-orange-950/25 hover:bg-brandDark disabled:bg-orange-300",
+    secondary: "border border-[#ded7cf] bg-[#fffdfa] text-gray-800 hover:border-orange-300 hover:bg-orange-50 disabled:text-gray-400",
+    danger: "border border-red-300 bg-red-950/20 text-red-300 hover:bg-red-900/25 disabled:text-red-300"
   };
 
   return (
@@ -30,7 +30,7 @@ export function Button({
 
 export function Alert({ type, message }: { type: "success" | "error"; message: string }) {
   const Icon = type === "success" ? CheckCircle2 : AlertCircle;
-  const styles = type === "success" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-danger";
+  const styles = type === "success" ? "border-emerald-400/45 bg-emerald-500/12 text-emerald-200" : "border-red-300/40 bg-red-500/12 text-red-200";
 
   return (
     <div className={`mb-4 flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${styles}`}>
@@ -42,7 +42,7 @@ export function Alert({ type, message }: { type: "success" | "error"; message: s
 
 export function LoadingState({ label = "Carregando dados..." }: { label?: string }) {
   return (
-    <div className="flex min-h-40 items-center justify-center rounded-lg border border-dashed border-[#ded7cf] bg-[#fffdfa] text-sm text-muted">
+    <div className="flex min-h-40 items-center justify-center rounded-lg border border-dashed border-[#ded7cf] bg-[#fffdfa]/80 text-sm text-muted">
       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       {label}
     </div>
@@ -51,8 +51,10 @@ export function LoadingState({ label = "Carregando dados..." }: { label?: string
 
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
-    <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-[#ded7cf] bg-[#fffdfa] px-4 py-6 text-center">
-      <SearchX className="h-7 w-7 text-gray-400" />
+    <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-[#ded7cf] bg-[#fffdfa]/80 px-4 py-6 text-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-orange-300/25 bg-orange-500/10">
+        <SearchX className="h-5 w-5 text-brand" />
+      </div>
       <p className="mt-3 text-sm font-semibold text-gray-900">{title}</p>
       <p className="mt-1 max-w-md text-sm text-muted">{description}</p>
       {action ? <div className="mt-4">{action}</div> : null}
@@ -61,7 +63,7 @@ export function EmptyState({ title, description, action }: { title: string; desc
 }
 
 export function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-lg border border-[#ded7cf] bg-[#fffdfa] shadow-sm shadow-stone-900/5 ${className}`}>{children}</section>;
+  return <section className={`rounded-lg border border-[#ded7cf] bg-[#fffdfa] shadow-sm shadow-stone-950/10 ${className}`}>{children}</section>;
 }
 
 export function FieldGroup({ title, description, children, className = "" }: { title: string; description?: string; children: React.ReactNode; className?: string }) {
@@ -83,10 +85,10 @@ export function MobileRecordCard({ children, className = "" }: { children: React
 export function StatusBadge({ status }: { status: string }) {
   const tone =
     status === "PAGO" || status === "ATIVO" || status === "EM DIA"
-      ? "bg-emerald-950/45 text-emerald-300 ring-emerald-500/40"
+      ? "bg-emerald-500/12 text-emerald-300 ring-emerald-500/35"
       : status === "ATRASADO" || status === "INATIVO" || status === "INADIMPLENTE" || status === "CANCELADO"
-        ? "bg-red-50 text-red-700 ring-red-200"
-        : "bg-orange-50 text-orange-800 ring-orange-200";
+        ? "bg-red-500/12 text-red-300 ring-red-500/35"
+        : "bg-orange-500/12 text-orange-300 ring-orange-500/35";
 
   return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ring-1 ${tone}`}>{status}</span>;
 }
