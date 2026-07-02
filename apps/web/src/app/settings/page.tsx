@@ -100,25 +100,25 @@ export default function SettingsPage() {
         <LoadingState />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-          <SectionCard className="p-5">
+          <SectionCard className="min-w-0 p-5">
             <p className="text-sm font-semibold text-ink">Usuário logado</p>
             <div className="mt-4 space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-3">
+              <div className="flex flex-col gap-1 border-b border-gray-100 pb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <span className="text-muted">Nome</span>
-                <span className="font-medium text-ink">{user?.name ?? "-"}</span>
+                <span className="break-words font-medium text-ink">{user?.name ?? "-"}</span>
               </div>
-              <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-3">
+              <div className="flex flex-col gap-1 border-b border-gray-100 pb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <span className="text-muted">E-mail</span>
-                <span className="font-medium text-ink">{user?.email ?? "-"}</span>
+                <span className="break-all font-medium text-ink">{user?.email ?? "-"}</span>
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <span className="text-muted">Perfil</span>
                 <StatusBadge status={user?.role ?? "ADMIN"} />
               </div>
             </div>
           </SectionCard>
 
-          <SectionCard className="p-5">
+          <SectionCard className="min-w-0 p-5">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-ink">Financeiro</p>
@@ -159,7 +159,7 @@ export default function SettingsPage() {
             </form>
           </SectionCard>
 
-          <SectionCard className="p-5 lg:col-span-2">
+          <SectionCard className="min-w-0 p-5 lg:col-span-2">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-ink">Auditoria recente</p>
